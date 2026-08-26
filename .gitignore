@@ -1,0 +1,12 @@
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Local photo inputs, generated prints, reports, and geocoding cache
+input/
+output/
+reports/
+cache/
+人工补录.csv
+处理报告.csv
