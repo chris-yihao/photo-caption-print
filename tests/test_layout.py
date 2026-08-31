@@ -76,17 +76,19 @@ def test_square_and_portrait_remain_uncropped_with_reduced_type():
 
 
 @pytest.mark.parametrize(
-    ("source_size", "expected_baselines"),
+    ("source_size", "expected_baselines", "expected_gap"),
     [
-        ((4032, 3024), (1123, 1165)),
-        ((3024, 4032), (1687, 1745)),
-        ((3000, 3000), (1123, 1165)),
+        ((4032, 3024), (1119, 1161), 42),
+        ((3024, 4032), (1681, 1739), 58),
+        ((3000, 3000), (1119, 1161), 42),
     ],
 )
-def test_caption_lines_move_apart_by_five_pixels_each(source_size, expected_baselines):
+def test_caption_pair_is_centered_without_changing_line_gap(source_size, expected_baselines, expected_gap):
     geometry = geometry_for(*source_size)
 
     assert (geometry.primary_y, geometry.secondary_y) == expected_baselines
+    assert geometry.secondary_y - geometry.primary_y == expected_gap
+    assert geometry.primary_y + geometry.secondary_y == geometry.caption_top + geometry.canvas_height
 
 
 @pytest.mark.parametrize("width,height", [(0, 1), (1, 0), (-2, 4), (1.0, 2), (True, 2)])

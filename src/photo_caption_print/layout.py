@@ -109,9 +109,13 @@ def geometry_for(source_width: int, source_height: int) -> PrintGeometry:
     else:
         primary_font_size, secondary_font_size = 28, 20
         primary_min_font_size, secondary_min_font_size = 18, 15
-    # The two baselines sit at 40% and 67% of the reserved caption area.
-    primary_y = caption_top + int(caption_height * 0.40) - 5
-    secondary_y = caption_top + int(caption_height * 0.67) + 5
+    # Preserve the approved line separation while centering the pair.
+    primary_offset = int(caption_height * 0.40) - 5
+    secondary_offset = int(caption_height * 0.67) + 5
+    baseline_gap = secondary_offset - primary_offset
+    caption_center = caption_top + caption_height // 2
+    primary_y = caption_center - baseline_gap // 2
+    secondary_y = primary_y + baseline_gap
 
     return PrintGeometry(
         source_width=source_width,
