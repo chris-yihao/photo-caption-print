@@ -2,6 +2,7 @@
 .idea/
 .vscode/
 .worktrees/
+.venv/
 *.log
 
 # Local photo inputs, generated prints, reports, and geocoding cache
@@ -9,5 +10,8 @@ input/
 output/
 reports/
 cache/
+已选照片/
+打印成品/
 人工补录.csv
 处理报告.csv
+.superpowers/
