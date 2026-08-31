@@ -127,23 +127,23 @@ def test_landscape_render_is_lossless_center_crop_in_exact_photo_frame(tmp_path,
         text=True,
         check=True,
     )
-    assert bounds.stdout == "1640x960+80+0"
+    assert bounds.stdout == "1720x1080+40+0"
 
-    for point in ((79, 0), (1720, 0), (79, 959), (1720, 959), (80, 960), (1719, 960)):
+    for point in ((39, 0), (1760, 0), (39, 1079), (1760, 1079), (40, 1080), (1759, 1080)):
         assert _is_white(_pixel(output, *point))
-    for point in ((80, 0), (1719, 0), (80, 959), (1719, 959)):
+    for point in ((40, 0), (1759, 0), (40, 1079), (1759, 1079)):
         assert not _is_white(_pixel(output, *point))
 
     if crop_axis == "vertical":
-        assert _near_color(_pixel(output, 900, 40), (230, 20, 20))
-        assert _near_color(_pixel(output, 900, 900), (20, 220, 20))
-        assert _near_color(_pixel(output, 900, 0), (64, 64, 64))
-        assert _near_color(_pixel(output, 900, 959), (64, 64, 64))
+        assert _near_color(_pixel(output, 900, 90), (230, 20, 20))
+        assert _near_color(_pixel(output, 900, 980), (20, 220, 20))
+        assert _near_color(_pixel(output, 900, 40), (64, 64, 64))
+        assert _near_color(_pixel(output, 900, 1040), (64, 64, 64))
     else:
-        assert _near_color(_pixel(output, 220, 480), (230, 20, 20))
-        assert _near_color(_pixel(output, 1540, 480), (20, 220, 20))
-        assert _near_color(_pixel(output, 80, 480), (64, 64, 64))
-        assert _near_color(_pixel(output, 1719, 480), (64, 64, 64))
+        assert _near_color(_pixel(output, 140, 540), (230, 20, 20))
+        assert _near_color(_pixel(output, 1640, 540), (20, 220, 20))
+        assert _near_color(_pixel(output, 40, 540), (64, 64, 64))
+        assert _near_color(_pixel(output, 1759, 540), (64, 64, 64))
 
 
 def test_live_magick_command_accepts_leading_hyphen_input_and_output_paths(tmp_path):
@@ -230,7 +230,7 @@ def test_cli_default_font_renders_distinct_chinese_glyphs(tmp_path):
 
     for name in ("zhong", "wen", "xing", "qi"):
         ink = subprocess.run(
-            ["magick", str(outputs[name]), "-crop", "1800x240+0+960", "-threshold", "90%", "-format", "%[fx:mean]", "info:"],
+            ["magick", str(outputs[name]), "-crop", "1800x120+0+1080", "-threshold", "90%", "-format", "%[fx:mean]", "info:"],
             capture_output=True,
             text=True,
             check=True,
@@ -246,7 +246,7 @@ def test_cli_default_font_renders_distinct_chinese_glyphs(tmp_path):
             assert float(comparison.stderr.split()[0]) > 0
 
     tofu_ink = subprocess.run(
-        ["magick", str(outputs["tofu"]), "-crop", "1800x240+0+960", "-threshold", "90%", "-format", "%[fx:mean]", "info:"],
+        ["magick", str(outputs["tofu"]), "-crop", "1800x120+0+1080", "-threshold", "90%", "-format", "%[fx:mean]", "info:"],
         capture_output=True,
         text=True,
         check=True,

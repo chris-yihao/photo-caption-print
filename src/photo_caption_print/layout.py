@@ -82,17 +82,17 @@ def geometry_for(source_width: int, source_height: int) -> PrintGeometry:
     portrait = source_height > source_width
     landscape = source_width > source_height
     canvas_width, canvas_height = (1200, 1800) if portrait else (1800, 1200)
-    caption_height = canvas_height // 5
+    caption_height = 180 if portrait else 120
     caption_top = canvas_height - caption_height
 
     if landscape:
-        area_x, area_y, area_width, area_height = 80, 0, 1640, 960
+        area_x, area_y, area_width, area_height = 40, 0, 1720, 1080
         photo_width, photo_height = area_width, area_height
         photo_x, photo_y = area_x, area_y
         scale = max(area_width / source_width, area_height / source_height)
         source_crop = (area_width, area_height)
     else:
-        inset = 40 if portrait else 60
+        inset = 20 if portrait else 30
         area_x = area_y = inset
         area_width = canvas_width - 2 * inset
         area_height = caption_top - 2 * inset

@@ -23,24 +23,24 @@ def _profile(tmp_path):
 def test_landscape_crop_scale_uses_width_for_vertical_crop():
     geometry = geometry_for(4032, 3024)
 
-    assert geometry.scale == pytest.approx(1640 / 4032)
-    assert geometry.effective_ppi == pytest.approx(4032 / (1640 / 300))
+    assert geometry.scale == pytest.approx(1720 / 4032)
+    assert geometry.effective_ppi == pytest.approx(4032 / (1720 / 300))
 
 
 def test_landscape_crop_scale_uses_height_for_panorama():
     geometry = geometry_for(4000, 1000)
 
-    assert geometry.scale == pytest.approx(960 / 1000)
-    assert geometry.effective_ppi == pytest.approx(312.5)
+    assert geometry.scale == pytest.approx(1080 / 1000)
+    assert geometry.effective_ppi == pytest.approx(300 / 1.08)
 
 
 def test_portrait_geometry_uses_proportional_safe_inset_and_print_fonts():
     geometry = geometry_for(3024, 4032)
 
     assert (geometry.canvas_width, geometry.canvas_height) == (1200, 1800)
-    assert geometry.caption_top == 1440
-    assert (geometry.photo_area_x, geometry.photo_area_y) == (40, 40)
-    assert (geometry.photo_area_width, geometry.photo_area_height) == (1120, 1360)
+    assert geometry.caption_top == 1620
+    assert (geometry.photo_area_x, geometry.photo_area_y) == (20, 20)
+    assert (geometry.photo_area_width, geometry.photo_area_height) == (1160, 1580)
     assert (geometry.primary_font_size, geometry.secondary_font_size) == (42, 30)
     assert (geometry.primary_min_font_size, geometry.secondary_min_font_size) == (27, 22)
     assert geometry.caption_top < geometry.primary_y < geometry.secondary_y < 1800
@@ -51,16 +51,16 @@ def test_square_geometry_is_landscape_and_never_crops():
 
     assert (geometry.canvas_width, geometry.canvas_height) == (1800, 1200)
     assert geometry.source_crop is None
-    assert geometry.photo_width == geometry.photo_height == 840
+    assert geometry.photo_width == geometry.photo_height == 1020
 
 
 def test_landscape_geometry_uses_narrow_margin_center_crop_and_smaller_type():
     geometry = geometry_for(3264, 2448)
 
     assert (geometry.canvas_width, geometry.canvas_height) == (1800, 1200)
-    assert (geometry.caption_top, geometry.photo_x, geometry.photo_y) == (960, 80, 0)
-    assert (geometry.photo_width, geometry.photo_height) == (1640, 960)
-    assert geometry.source_crop == (1640, 960)
+    assert (geometry.caption_top, geometry.photo_x, geometry.photo_y) == (1080, 40, 0)
+    assert (geometry.photo_width, geometry.photo_height) == (1720, 1080)
+    assert geometry.source_crop == (1720, 1080)
     assert (geometry.primary_font_size, geometry.secondary_font_size) == (28, 20)
     assert (geometry.primary_min_font_size, geometry.secondary_min_font_size) == (18, 15)
 
@@ -94,7 +94,7 @@ def test_command_has_safe_source_and_print_metadata_settings(tmp_path):
     assert command[:4] == ["magick", "(", "-read", "-source.jpg[0]"]
     assert "--" not in command
     assert command.index("+swap") < command.index("-composite")
-    assert command[command.index("-resize") + 1] == "1640x960^"
+    assert command[command.index("-resize") + 1] == "1720x1080^"
     assert "-crop" not in command
     assert command.index("-resize") < command.index("-composite") < command.index("-annotate")
     assert command[command.index("-units") : command.index("-units") + 11] == [
@@ -116,7 +116,7 @@ def test_command_converts_source_profile_before_resize_and_tags_destination_befo
     source_group = command[source_group_open : source_group_close + 1]
     assert source_group == [
         "(", "-read", "source.jpg[0]", "-auto-orient", "-profile", str(profile),
-        "-resize", "1640x960^", "-gravity", "center", "-extent", "1640x960", ")",
+        "-resize", "1720x1080^", "-gravity", "center", "-extent", "1720x1080", ")",
     ]
     profile_positions = [index for index, value in enumerate(command) if value == "-profile"]
     assert command.index("-composite") < command.index("-strip") < profile_positions[1] < command.index("-quality")
@@ -133,17 +133,17 @@ def test_landscape_render_centers_and_crops_to_the_exact_photo_frame(tmp_path):
     )
     resize = command.index("-resize")
     assert command[resize : resize + 7] == [
-        "-resize", "1640x960^", "-gravity", "center",
-        "-extent", "1640x960", ")",
+        "-resize", "1720x1080^", "-gravity", "center",
+        "-extent", "1720x1080", ")",
     ]
-    assert "+80+0" in command
+    assert "+40+0" in command
 
 
 @pytest.mark.parametrize(
     ("source_width", "source_height", "expected_photo", "expected_resize"),
     [
-        (1001, 1000, (1640, 960), "1640x960^"),
-        (1000, 1001, (1120, 1121), "1120x"),
+        (1001, 1000, (1720, 1080), "1720x1080^"),
+        (1000, 1001, (1160, 1161), "1160x"),
     ],
 )
 def test_geometry_uses_half_up_rounding_and_one_axis_im_resize(tmp_path, source_width, source_height, expected_photo, expected_resize):
@@ -229,7 +229,7 @@ def test_single_caption_line_is_centered_in_the_reserved_caption_zone(tmp_path):
         Path("photo.jpg"), tmp_path / "output.jpg", geometry, ("", "Shanghai / iPhone"), "Helvetica", profile_path=_profile(tmp_path)
     )
 
-    assert command[command.index("-annotate") + 1] == "+0+1080"
+    assert command[command.index("-annotate") + 1] == "+0+1140"
 
 
 def test_fit_captions_shortens_location_detail_before_reducing_font_size():
