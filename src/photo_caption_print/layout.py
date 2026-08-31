@@ -110,8 +110,8 @@ def geometry_for(source_width: int, source_height: int) -> PrintGeometry:
         primary_font_size, secondary_font_size = 28, 20
         primary_min_font_size, secondary_min_font_size = 18, 15
     # The two baselines sit at 40% and 67% of the reserved caption area.
-    primary_y = caption_top + int(caption_height * 0.40)
-    secondary_y = caption_top + int(caption_height * 0.67)
+    primary_y = caption_top + int(caption_height * 0.40) - 5
+    secondary_y = caption_top + int(caption_height * 0.67) + 5
 
     return PrintGeometry(
         source_width=source_width,

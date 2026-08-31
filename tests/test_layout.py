@@ -75,6 +75,20 @@ def test_square_and_portrait_remain_uncropped_with_reduced_type():
     assert (portrait.primary_font_size, portrait.secondary_font_size) == (42, 30)
 
 
+@pytest.mark.parametrize(
+    ("source_size", "expected_baselines"),
+    [
+        ((4032, 3024), (1123, 1165)),
+        ((3024, 4032), (1687, 1745)),
+        ((3000, 3000), (1123, 1165)),
+    ],
+)
+def test_caption_lines_move_apart_by_five_pixels_each(source_size, expected_baselines):
+    geometry = geometry_for(*source_size)
+
+    assert (geometry.primary_y, geometry.secondary_y) == expected_baselines
+
+
 @pytest.mark.parametrize("width,height", [(0, 1), (1, 0), (-2, 4), (1.0, 2), (True, 2)])
 def test_geometry_requires_positive_integer_source_dimensions(width, height):
     with pytest.raises(ValueError, match="positive integers"):
