@@ -215,7 +215,7 @@ def test_gps_metadata_flows_through_geocoding_to_documentary_captions(tmp_path):
 
     assert geocoder.calls == [(35.12345, 139.54321)]
     assert renderer.calls[0][3] == (
-        "２０３０年０１月０７日 · 星期一 · 08:09",
+        "2030年01月07日 · 星期一 · 08:09",
         "重庆 · 合川区 / Test Camera",
     )
     assert read_report(report)[0]["location"] == "重庆 · 合川区"
@@ -247,7 +247,7 @@ def test_geocode_failure_keeps_date_and_device_captions_and_leaves_report_locati
     assert row["warning"] == "Offline cache miss"
     assert row["status"] == "warning"
     assert renderer.calls[0][3] == (
-        "２０３０年０１月０７日 · 星期一 · 08:09",
+        "2030年01月07日 · 星期一 · 08:09",
         "Test Camera",
     )
 

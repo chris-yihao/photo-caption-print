@@ -10,7 +10,6 @@ from unicodedata import category, normalize
 from photo_caption_print.models import PhotoMetadata
 
 WEEKDAYS = ("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
-_FULLWIDTH_DATE_DIGITS = str.maketrans("0123456789", "０１２３４５６７８９")
 _OVERRIDE_COLUMNS = ("filename", "captured_at", "location", "device")
 
 
@@ -55,9 +54,8 @@ def format_caption(metadata: PhotoMetadata) -> tuple[str, str]:
     if metadata.captured_at is None:
         date_line = ""
     else:
-        date = metadata.captured_at.strftime("%Y年%m月%d日").translate(_FULLWIDTH_DATE_DIGITS)
         date_line = (
-            f"{date} · "
+            f"{metadata.captured_at:%Y年%m月%d日} · "
             f"{WEEKDAYS[metadata.captured_at.weekday()]} · {metadata.captured_at:%H:%M}"
         )
 
