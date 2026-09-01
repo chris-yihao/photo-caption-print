@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 from pathlib import Path
+import re
 import subprocess
 from typing import Callable, Sequence
 
@@ -22,6 +23,26 @@ _EXIF_ORIENTATIONS = {
     "1": "TopLeft", "2": "TopRight", "3": "BottomRight", "4": "BottomLeft",
     "5": "LeftTop", "6": "RightTop", "7": "RightBottom", "8": "LeftBottom",
 }
+_DATE_CAPTION_PATTERN = re.compile(
+    r"^(\d{4})年(\d{2})月(\d{2})日( · 星期[一二三四五六日] · \d{2}:\d{2})$"
+)
+
+
+def _date_caption_runs(text: str) -> tuple[tuple[str, bool], ...] | None:
+    """Split a formatter-produced primary line into positioned render runs."""
+    match = _DATE_CAPTION_PATTERN.fullmatch(text)
+    if match is None:
+        return None
+    year, month, day, suffix = match.groups()
+    return (
+        (year, True),
+        ("年", False),
+        (month, True),
+        ("月", False),
+        (day, True),
+        ("日", False),
+        (suffix, False),
+    )
 
 
 class RenderError(RuntimeError):
@@ -246,6 +267,40 @@ def fit_captions(
     return FittedCaptions(primary, secondary, primary_size, secondary_size, warning)
 
 
+def _caption_width(text: str, font: str, size: int, measure: MeasurementRunner) -> int:
+    """Measure a standard date from its runs, including five 1 px unit gaps."""
+    runs = _date_caption_runs(text)
+    if runs is None:
+        return measure(text, font, size)
+    return sum(measure(run, font, size) for run, _is_digit in runs) + 5
+
+
+def _date_row_arguments(text: str, font: str, size: int, y: int) -> list[str]:
+    """Build one centered transparent row with exact date gaps and offsets."""
+    runs = _date_caption_runs(text)
+    if runs is None:
+        raise ValueError("text is not a standard documentary date caption")
+    arguments = ["(", "-background", "none"]
+    for index, (run, is_digit) in enumerate(runs):
+        arguments.extend([
+            "(", "+size", "-background", "none", "-fill", "#171717",
+            "-font", str(font), "-pointsize", str(size),
+            f"label:{_safe_annotation(run)}",
+        ])
+        if is_digit:
+            arguments.extend([
+                "-gravity", "north", "-splice", "0x1",
+                "-gravity", "south", "-chop", "0x1",
+            ])
+        arguments.append(")")
+        if index < 5:
+            arguments.extend(["(", "-size", "1x1", "xc:none", ")"])
+    arguments.extend([
+        "+append", ")", "-gravity", "north", "-geometry", f"+0+{y}", "-composite", "+geometry",
+    ])
+    return arguments
+
+
 def _shorten_location_detail(text: str, font: str, size: int, max_width: int, measure: MeasurementRunner) -> str:
     if not text or measure(text, font, size) <= max_width:
         return text
@@ -273,7 +328,7 @@ def _fit_one(
     if not text:
         return "", initial_size, False
     for size in range(initial_size, minimum_size - 1, -1):
-        if measure(text, font, size) <= max_width:
+        if _caption_width(text, font, size, measure) <= max_width:
             return text, size, False
     return _ellipsize(text, font, minimum_size, max_width, measure), minimum_size, True
 
@@ -354,7 +409,10 @@ def build_magick_command(
         single_line_y = geometry.caption_top + (geometry.canvas_height - geometry.caption_top) // 2
         if primary:
             primary_y = single_line_y if not secondary else geometry.primary_y
-            command.extend(["-pointsize", str(primary_size), "-fill", "#171717", "-annotate", f"+0+{primary_y}", _safe_annotation(primary)])
+            if _date_caption_runs(primary) is not None:
+                command.extend(_date_row_arguments(primary, font, primary_size, primary_y))
+            else:
+                command.extend(["-pointsize", str(primary_size), "-fill", "#171717", "-annotate", f"+0+{primary_y}", _safe_annotation(primary)])
         if secondary:
             secondary_y = single_line_y if not primary else geometry.secondary_y
             command.extend(["-pointsize", str(secondary_size), "-fill", "#666666", "-annotate", f"+0+{secondary_y}", _safe_annotation(secondary)])
@@ -396,20 +454,26 @@ def _caption_layer_arguments(
         "-font", str(font), "-gravity", "north",
     ]
     if primary:
-        arguments.extend([
-            "-pointsize", str(primary_size), "-fill", "#171717",
-            "-annotate", "+0+0", _safe_annotation(primary),
-        ])
+        if _date_caption_runs(primary) is not None:
+            arguments.extend(_date_row_arguments(primary, font, primary_size, 0))
+        else:
+            arguments.extend([
+                "-pointsize", str(primary_size), "-fill", "#171717",
+                "-annotate", "+0+0", _safe_annotation(primary),
+            ])
     if secondary:
         secondary_y = baseline_gap if primary else 0
         arguments.extend([
             "-pointsize", str(secondary_size), "-fill", "#666666",
             "-annotate", f"+0+{secondary_y}", _safe_annotation(secondary),
         ])
+    caption_y = geometry.caption_top
+    if primary and not secondary and _date_caption_runs(primary) is not None:
+        caption_y += 1
     arguments.extend([
         "-trim", "+repage", "-gravity", "center", "-background", "none",
         "-extent", f"{geometry.canvas_width}x{caption_height}", ")",
-        "-gravity", "northwest", "-geometry", f"+0+{geometry.caption_top}",
+        "-gravity", "northwest", "-geometry", f"+0+{caption_y}",
         "-composite",
     ])
     return arguments

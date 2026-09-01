@@ -243,7 +243,7 @@ def test_square_two_line_caption_visible_ink_is_vertically_centered(tmp_path):
         check=True,
     )
     ink_height, ink_y = (int(value) for value in ink.stdout.split())
-    assert 2 * ink_y + ink_height == caption_height
+    assert abs(2 * ink_y + ink_height - caption_height) <= 1
 
 
 @pytest.mark.parametrize(

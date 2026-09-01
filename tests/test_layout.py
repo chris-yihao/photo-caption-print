@@ -5,6 +5,9 @@ import pytest
 
 from photo_caption_print.layout import (
     RenderError,
+    _caption_width,
+    _date_caption_runs,
+    _date_row_arguments,
     build_magick_command,
     fit_captions,
     geometry_for,
@@ -12,6 +15,77 @@ from photo_caption_print.layout import (
     probe_oriented_dimensions,
     run_render,
 )
+
+
+def test_date_caption_runs_split_only_the_standard_documentary_caption():
+    assert _date_caption_runs("2017年12月18日 · 星期一 · 11:25") == (
+        ("2017", True),
+        ("年", False),
+        ("12", True),
+        ("月", False),
+        ("18", True),
+        ("日", False),
+        (" · 星期一 · 11:25", False),
+    )
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["date", "2017年12月18日", "2017年12月18日 · Monday · 11:25", "2017年12月18日 · 星期一 · 11:2…"],
+)
+def test_date_caption_runs_leave_nonstandard_primary_text_unchanged(text):
+    assert _date_caption_runs(text) is None
+
+
+def test_date_caption_measurement_adds_five_exact_unit_gap_pixels():
+    calls = []
+
+    def measure(text, font, size):
+        calls.append((text, font, size))
+        return len(text) * 10
+
+    text = "2017年12月18日 · 星期一 · 11:25"
+
+    assert _caption_width(text, "STHeiti", 42, measure) == len(text) * 10 + 5
+    assert [call[0] for call in calls] == ["2017", "年", "12", "月", "18", "日", " · 星期一 · 11:25"]
+
+
+def test_date_caption_command_builds_five_gaps_and_lowers_only_digit_runs():
+    arguments = _date_row_arguments(
+        "2017年12月18日 · 星期一 · 11:25", "STHeiti", 42, 7
+    )
+
+    assert [item for item in arguments if item.startswith("label:")] == [
+        "label:2017",
+        "label:年",
+        "label:12",
+        "label:月",
+        "label:18",
+        "label:日",
+        "label: · 星期一 · 11:25",
+    ]
+    assert sum(
+        arguments[index : index + 4] == ["(", "-size", "1x1", "xc:none"]
+        for index in range(len(arguments) - 3)
+    ) == 5
+    assert arguments.count("-splice") == 3
+    assert arguments.count("0x1") == 6
+    assert arguments.count("-chop") == 3
+    assert arguments.count("+size") == 7
+    assert arguments[-7:] == [")", "-gravity", "north", "-geometry", "+0+7", "-composite", "+geometry"]
+
+
+@pytest.mark.parametrize("source_size", [(4032, 3024), (3024, 4032), (956, 961)])
+def test_standard_date_caption_command_uses_segmented_row_for_every_layout(tmp_path, source_size):
+    primary = "2017年12月18日 · 星期一 · 11:25"
+    command = build_magick_command(
+        Path("source.jpg"), tmp_path / "output.jpg", geometry_for(*source_size),
+        (primary, "iPhone 6"), "Helvetica", profile_path=_profile(tmp_path),
+    )
+
+    assert "label:2017" in command
+    assert "label:日" in command
+    assert primary not in command
 
 
 def _profile(tmp_path):
@@ -200,16 +274,23 @@ def test_two_line_square_command_centers_a_trimmed_caption_layer(tmp_path):
 
     assert "xc:none" in command
     layer_start = command.index("(", command.index("xc:none") - 4)
-    expected_layer = [
-        "(", "-size", "1800x120", "xc:none", "-font", font,
-        "-gravity", "north",
-        "-pointsize", "28", "-fill", "#171717", "-annotate", "+0+0", primary,
-        "-pointsize", "20", "-fill", "#666666", "-annotate", "+0+42", secondary,
-        "-trim", "+repage", "-gravity", "center", "-background", "none",
-        "-extent", "1800x120", ")",
+    layer_end = command.index(")", command.index("-extent", layer_start))
+    layer = command[layer_start : layer_end + 1]
+    assert layer[:8] == [
+        "(", "-size", "1800x120", "xc:none", "-font", font, "-gravity", "north",
+    ]
+    assert "label:2017" in layer
+    secondary_sequence = ["-pointsize", "20", "-fill", "#666666", "-annotate", "+0+42", secondary]
+    assert any(
+        layer[index : index + len(secondary_sequence)] == secondary_sequence
+        for index in range(len(layer) - len(secondary_sequence) + 1)
+    )
+    assert layer[-9:] == [
+        "-trim", "+repage", "-gravity", "center", "-background", "none", "-extent", "1800x120", ")",
+    ]
+    assert command[layer_end + 1 : layer_end + 6] == [
         "-gravity", "northwest", "-geometry", "+0+1080", "-composite",
     ]
-    assert command[layer_start : layer_start + len(expected_layer)] == expected_layer
 
 
 @pytest.mark.parametrize(
@@ -393,7 +474,7 @@ def test_fit_captions_shortens_location_detail_before_reducing_font_size():
         return widths.get(text, 100)
 
     fitted = fit_captions(
-        ("2024年01月01日 · 星期一 · 09:05", "上海市 · 黄浦区 · 外滩十八号 / iPhone 8"),
+        ("date", "上海市 · 黄浦区 · 外滩十八号 / iPhone 8"),
         geometry,
         "Helvetica",
         measure,
