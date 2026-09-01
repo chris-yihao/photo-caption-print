@@ -16,7 +16,7 @@
 - Modify `tests/test_metadata.py`: cover mapped, readable, and unknown device values.
 - Modify `src/photo_caption_print/layout.py`: add the inclusive 2% square-like classification.
 - Modify `tests/test_layout.py`: cover the production dimensions, threshold boundary, and out-of-threshold orientations.
-- Modify `tests/integration/test_render.py`: keep near-square canvas expectations aligned with the new classification.
+- Modify `tests/integration/test_render.py`: cover near-square canvas selection and actual square-caption ink centering.
 
 ### Task 1: Normalize the Confirmed Apple Device Identifier
 
@@ -171,7 +171,91 @@ git add src/photo_caption_print/layout.py tests/test_layout.py tests/integration
 git commit -m "fix: treat near-square photos as square"
 ```
 
-### Task 3: Verify the Complete Project and Production Example
+### Task 3: Center the Visible Square Caption Group
+
+**Files:**
+- Modify: `tests/test_layout.py`
+- Modify: `tests/integration/test_render.py`
+- Modify: `src/photo_caption_print/layout.py`
+
+- [ ] **Step 1: Add a failing command-construction test**
+
+Build a command for `geometry_for(956, 961)` with two caption lines and assert
+that it contains a separate transparent `1800x120` group with:
+
+```python
+[
+    "(", "-size", "1800x120", "xc:none", "-font", font,
+    "-gravity", "north",
+    "-pointsize", "28", "-fill", "#171717", "-annotate", "+0+0", primary,
+    "-pointsize", "20", "-fill", "#666666", "-annotate", "+0+42", secondary,
+    "-trim", "+repage", "-gravity", "center", "-background", "none",
+    "-extent", "1800x120", ")",
+    "-gravity", "northwest", "-geometry", "+0+1080", "-composite",
+]
+```
+
+Also assert that landscape, portrait, and square single-line commands retain
+their existing direct-annotation path.
+
+- [ ] **Step 2: Verify the command test fails**
+
+```bash
+python3 -m pytest tests/test_layout.py::test_two_line_square_command_centers_a_trimmed_caption_layer -q
+```
+
+Expected: failure because the current command directly annotates both lines on
+the full canvas and has no transparent caption layer.
+
+- [ ] **Step 3: Add the square-only caption-layer command**
+
+Add a predicate that recognizes the square print geometry:
+
+```python
+def _uses_square_layout(geometry: PrintGeometry) -> bool:
+    return (
+        geometry.canvas_width == 1800
+        and geometry.canvas_height == 1200
+        and geometry.source_crop is None
+    )
+```
+
+For `_uses_square_layout(geometry) and primary and secondary`, append the exact
+transparent group arguments from Step 1. Derive its relative line offset from
+`geometry.secondary_y - geometry.primary_y`, and composite it at
+`geometry.caption_top`. Keep the existing direct annotations in the `else`
+branch for every other layout and for single-line square captions.
+
+- [ ] **Step 4: Add a live pixel-centering integration test**
+
+Render a `60×60` marker source to PNG with two representative Chinese caption
+lines. Crop the `1800×120+0+1080` caption area, reset its page offset, threshold
+the dark text against white, and trim it. Parse the returned ink bounds and
+assert:
+
+```python
+assert 2 * ink_y + ink_height == 120
+```
+
+This proves the visible pixels, rather than only annotation coordinates, are
+vertically centered.
+
+- [ ] **Step 5: Run focused tests**
+
+```bash
+python3 -m pytest tests/test_layout.py tests/integration/test_render.py -q
+```
+
+Expected: all focused command and live ImageMagick tests pass.
+
+- [ ] **Step 6: Commit the visible-centering fix**
+
+```bash
+git add src/photo_caption_print/layout.py tests/test_layout.py tests/integration/test_render.py
+git commit -m "fix: center visible square caption text"
+```
+
+### Task 4: Verify the Complete Project and Production Example
 
 **Files:**
 - Read: `/Users/chris/Desktop/照片/IMG_0466.jpeg`
