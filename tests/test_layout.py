@@ -185,6 +185,52 @@ def test_landscape_render_centers_and_crops_to_the_exact_photo_frame(tmp_path):
     assert "+40+0" in command
 
 
+def test_two_line_square_command_centers_a_trimmed_caption_layer(tmp_path):
+    font = "Helvetica"
+    primary = "2017年12月18日 · 星期一 · 21:08"
+    secondary = "iPhone 6"
+    command = build_magick_command(
+        Path("source.jpg"),
+        tmp_path / "output.jpg",
+        geometry_for(956, 961),
+        (primary, secondary),
+        font,
+        profile_path=_profile(tmp_path),
+    )
+
+    assert "xc:none" in command
+    layer_start = command.index("(", command.index("xc:none") - 4)
+    expected_layer = [
+        "(", "-size", "1800x120", "xc:none", "-font", font,
+        "-gravity", "north",
+        "-pointsize", "28", "-fill", "#171717", "-annotate", "+0+0", primary,
+        "-pointsize", "20", "-fill", "#666666", "-annotate", "+0+42", secondary,
+        "-trim", "+repage", "-gravity", "center", "-background", "none",
+        "-extent", "1800x120", ")",
+        "-gravity", "northwest", "-geometry", "+0+1080", "-composite",
+    ]
+    assert command[layer_start : layer_start + len(expected_layer)] == expected_layer
+
+
+@pytest.mark.parametrize(
+    ("source_size", "captions"),
+    [
+        ((4032, 3024), ("date", "device")),
+        ((3024, 4032), ("date", "device")),
+        ((956, 961), ("date", "")),
+        ((956, 961), ("", "device")),
+    ],
+)
+def test_non_square_or_single_line_commands_keep_direct_annotations(tmp_path, source_size, captions):
+    command = build_magick_command(
+        Path("source.jpg"), tmp_path / "output.jpg", geometry_for(*source_size),
+        captions, "Helvetica", profile_path=_profile(tmp_path),
+    )
+
+    assert "xc:none" not in command
+    assert command.count("-annotate") == sum(bool(line) for line in captions)
+
+
 @pytest.mark.parametrize(
     ("source_width", "source_height", "expected_photo", "expected_resize"),
     [

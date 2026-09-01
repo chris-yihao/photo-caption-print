@@ -346,18 +346,39 @@ def build_magick_command(
         "-gravity",
         "north",
     ]
-    single_line_y = geometry.caption_top + (geometry.canvas_height - geometry.caption_top) // 2
-    if primary:
-        primary_y = single_line_y if not secondary else geometry.primary_y
-        command.extend(["-pointsize", str(primary_size), "-fill", "#171717", "-annotate", f"+0+{primary_y}", _safe_annotation(primary)])
-    if secondary:
-        secondary_y = single_line_y if not primary else geometry.secondary_y
-        command.extend(["-pointsize", str(secondary_size), "-fill", "#666666", "-annotate", f"+0+{secondary_y}", _safe_annotation(secondary)])
+    if _uses_square_layout(geometry) and primary and secondary:
+        caption_height = geometry.canvas_height - geometry.caption_top
+        baseline_gap = geometry.secondary_y - geometry.primary_y
+        command.extend([
+            "(", "-size", f"{geometry.canvas_width}x{caption_height}", "xc:none",
+            "-font", str(font), "-gravity", "north",
+            "-pointsize", str(primary_size), "-fill", "#171717", "-annotate", "+0+0", _safe_annotation(primary),
+            "-pointsize", str(secondary_size), "-fill", "#666666", "-annotate", f"+0+{baseline_gap}", _safe_annotation(secondary),
+            "-trim", "+repage", "-gravity", "center", "-background", "none",
+            "-extent", f"{geometry.canvas_width}x{caption_height}", ")",
+            "-gravity", "northwest", "-geometry", f"+0+{geometry.caption_top}", "-composite",
+        ])
+    else:
+        single_line_y = geometry.caption_top + (geometry.canvas_height - geometry.caption_top) // 2
+        if primary:
+            primary_y = single_line_y if not secondary else geometry.primary_y
+            command.extend(["-pointsize", str(primary_size), "-fill", "#171717", "-annotate", f"+0+{primary_y}", _safe_annotation(primary)])
+        if secondary:
+            secondary_y = single_line_y if not primary else geometry.secondary_y
+            command.extend(["-pointsize", str(secondary_size), "-fill", "#666666", "-annotate", f"+0+{secondary_y}", _safe_annotation(secondary)])
     command.extend([
         "-units", "PixelsPerInch", "-density", "300", "-colorspace", "sRGB", "-strip", "-profile", str(profile),
         "-quality", "94", "-write", str(output), "null:",
     ])
     return command
+
+
+def _uses_square_layout(geometry: PrintGeometry) -> bool:
+    return (
+        geometry.canvas_width == 1800
+        and geometry.canvas_height == 1200
+        and geometry.source_crop is None
+    )
 
 
 def _safe_annotation(text: str) -> str:

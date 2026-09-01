@@ -214,6 +214,38 @@ def test_literal_percent_property_caption_draws_visible_text_instead_of_expandin
     assert float(ink.stdout) < 0.999
 
 
+def test_square_two_line_caption_visible_ink_is_vertically_centered(tmp_path):
+    if shutil.which("magick") is None:
+        pytest.skip("ImageMagick 'magick' executable is unavailable")
+
+    source = tmp_path / "source.png"
+    output = tmp_path / "output.png"
+    _edge_marker_fixture(source, 60, 60)
+    geometry = geometry_for(60, 60)
+    run_render(build_magick_command(
+        source,
+        output,
+        geometry,
+        ("2017年12月18日 · 星期一 · 21:08", "iPhone 6"),
+        _default_font(),
+    ))
+
+    caption_height = geometry.canvas_height - geometry.caption_top
+    ink = subprocess.run(
+        [
+            "magick", str(output),
+            "-crop", f"{geometry.canvas_width}x{caption_height}+0+{geometry.caption_top}",
+            "+repage", "-colorspace", "gray", "-threshold", "90%", "-negate",
+            "-trim", "-format", "%h %Y", "info:",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    ink_height, ink_y = (int(value) for value in ink.stdout.split())
+    assert 2 * ink_y + ink_height == caption_height
+
+
 def test_cli_default_font_renders_distinct_chinese_glyphs(tmp_path):
     if shutil.which("magick") is None:
         pytest.skip("ImageMagick 'magick' executable is unavailable")
