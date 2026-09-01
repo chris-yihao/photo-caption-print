@@ -39,24 +39,24 @@ def test_format_caption_formats_complete_metadata_exactly():
         )
     )
 
-    assert caption == ("2018年05月01日 · 星期二 · 14:30", "上海 · 外滩 / iPhone 8")
+    assert caption == ("２０１８年０５月０１日 · 星期二 · 14:30", "上海 · 外滩 / iPhone 8")
 
 
 def test_monday_date_formats_with_monday():
     metadata = make_metadata(captured_at=datetime(2030, 1, 7, 8, 9, 10))
 
-    assert format_caption(metadata)[0] == "2030年01月07日 · 星期一 · 08:09"
+    assert format_caption(metadata)[0] == "２０３０年０１月０７日 · 星期一 · 08:09"
 
 
 @pytest.mark.parametrize(
     ("metadata", "expected"),
     [
         (make_metadata(), ("", "")),
-        (make_metadata(captured_at=datetime(2024, 1, 1, 9, 5)), ("2024年01月01日 · 星期一 · 09:05", "")),
+        (make_metadata(captured_at=datetime(2024, 1, 1, 9, 5)), ("２０２４年０１月０１日 · 星期一 · 09:05", "")),
         (make_metadata(location="上海"), ("", "上海")),
         (make_metadata(device="iPhone"), ("", "iPhone")),
-        (make_metadata(captured_at=datetime(2024, 1, 1, 9, 5), location="上海"), ("2024年01月01日 · 星期一 · 09:05", "上海")),
-        (make_metadata(captured_at=datetime(2024, 1, 1, 9, 5), device="iPhone"), ("2024年01月01日 · 星期一 · 09:05", "iPhone")),
+        (make_metadata(captured_at=datetime(2024, 1, 1, 9, 5), location="上海"), ("２０２４年０１月０１日 · 星期一 · 09:05", "上海")),
+        (make_metadata(captured_at=datetime(2024, 1, 1, 9, 5), device="iPhone"), ("２０２４年０１月０１日 · 星期一 · 09:05", "iPhone")),
         (make_metadata(location="上海", device="iPhone"), ("", "上海 / iPhone")),
         (make_metadata(location="  ", device="  "), ("", "")),
     ],
