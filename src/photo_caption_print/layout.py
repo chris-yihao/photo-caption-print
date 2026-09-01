@@ -79,8 +79,9 @@ def geometry_for(source_width: int, source_height: int) -> PrintGeometry:
     ):
         raise ValueError("source dimensions must be positive integers")
 
-    portrait = source_height > source_width
-    landscape = source_width > source_height
+    square_like = abs(source_width - source_height) / max(source_width, source_height) <= 0.02
+    portrait = not square_like and source_height > source_width
+    landscape = not square_like and source_width > source_height
     canvas_width, canvas_height = (1200, 1800) if portrait else (1800, 1200)
     caption_height = 180 if portrait else 120
     caption_top = canvas_height - caption_height

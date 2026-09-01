@@ -15,8 +15,8 @@ from photo_caption_print.cli import _default_font
         ((80, 40), (1800, 1200)),
         ((40, 80), (1200, 1800)),
         ((60, 60), (1800, 1200)),
-        ((1001, 1000), (1800, 1200)),
-        ((1000, 1001), (1200, 1800)),
+        ((1021, 1000), (1800, 1200)),
+        ((1000, 1021), (1200, 1800)),
     ],
 )
 def test_magick_render_preserves_photo_frame_margin_and_print_density(tmp_path, source_size, expected_canvas):

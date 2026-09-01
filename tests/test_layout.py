@@ -54,6 +54,36 @@ def test_square_geometry_is_landscape_and_never_crops():
     assert geometry.photo_width == geometry.photo_height == 1020
 
 
+def test_img_0466_dimensions_use_centered_square_layout():
+    geometry = geometry_for(956, 961)
+
+    assert (geometry.canvas_width, geometry.canvas_height) == (1800, 1200)
+    assert geometry.source_crop is None
+    assert geometry.primary_y + geometry.secondary_y == geometry.caption_top + geometry.canvas_height
+
+
+@pytest.mark.parametrize("source_size", [(1000, 980), (980, 1000)])
+def test_two_percent_boundary_is_square_like(source_size):
+    geometry = geometry_for(*source_size)
+
+    assert (geometry.canvas_width, geometry.canvas_height) == (1800, 1200)
+    assert geometry.source_crop is None
+
+
+@pytest.mark.parametrize(
+    ("source_size", "expected_canvas", "expects_crop"),
+    [
+        ((1000, 979), (1800, 1200), True),
+        ((979, 1000), (1200, 1800), False),
+    ],
+)
+def test_dimensions_beyond_two_percent_keep_their_orientation(source_size, expected_canvas, expects_crop):
+    geometry = geometry_for(*source_size)
+
+    assert (geometry.canvas_width, geometry.canvas_height) == expected_canvas
+    assert (geometry.source_crop is not None) is expects_crop
+
+
 def test_landscape_geometry_uses_narrow_margin_center_crop_and_smaller_type():
     geometry = geometry_for(3264, 2448)
 
@@ -158,8 +188,8 @@ def test_landscape_render_centers_and_crops_to_the_exact_photo_frame(tmp_path):
 @pytest.mark.parametrize(
     ("source_width", "source_height", "expected_photo", "expected_resize"),
     [
-        (1001, 1000, (1720, 1080), "1720x1080^"),
-        (1000, 1001, (1160, 1161), "1160x"),
+        (1021, 1000, (1720, 1080), "1720x1080^"),
+        (1000, 1021, (1160, 1184), "1160x"),
     ],
 )
 def test_geometry_uses_half_up_rounding_and_one_axis_im_resize(tmp_path, source_width, source_height, expected_photo, expected_resize):
