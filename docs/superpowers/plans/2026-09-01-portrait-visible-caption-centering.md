@@ -168,7 +168,7 @@ Render a `40×80` marker source to PNG for captions `("date", "")` and
 trim the dark ink, then assert:
 
 ```python
-assert 2 * ink_y + ink_height == 180
+assert abs(2 * ink_y + ink_height - 180) <= 1
 ```
 
 - [ ] **Step 6: Run focused rendering tests**

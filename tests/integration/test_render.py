@@ -246,6 +246,39 @@ def test_square_two_line_caption_visible_ink_is_vertically_centered(tmp_path):
     assert 2 * ink_y + ink_height == caption_height
 
 
+@pytest.mark.parametrize(
+    "captions",
+    [
+        ("2017年12月18日 · 星期一 · 11:25", ""),
+        ("2017年12月18日 · 星期一 · 11:25", "iPhone 6"),
+    ],
+)
+def test_portrait_caption_visible_ink_is_vertically_centered(tmp_path, captions):
+    if shutil.which("magick") is None:
+        pytest.skip("ImageMagick 'magick' executable is unavailable")
+
+    source = tmp_path / "source.png"
+    output = tmp_path / "output.png"
+    _edge_marker_fixture(source, 40, 80)
+    geometry = geometry_for(40, 80)
+    run_render(build_magick_command(source, output, geometry, captions, _default_font()))
+
+    caption_height = geometry.canvas_height - geometry.caption_top
+    ink = subprocess.run(
+        [
+            "magick", str(output),
+            "-crop", f"{geometry.canvas_width}x{caption_height}+0+{geometry.caption_top}",
+            "+repage", "-colorspace", "gray", "-threshold", "90%", "-negate",
+            "-trim", "-format", "%h %Y", "info:",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    ink_height, ink_y = (int(value) for value in ink.stdout.split())
+    assert abs(2 * ink_y + ink_height - caption_height) <= 1
+
+
 def test_cli_default_font_renders_distinct_chinese_glyphs(tmp_path):
     if shutil.which("magick") is None:
         pytest.skip("ImageMagick 'magick' executable is unavailable")

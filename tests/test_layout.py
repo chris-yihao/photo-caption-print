@@ -213,15 +213,64 @@ def test_two_line_square_command_centers_a_trimmed_caption_layer(tmp_path):
 
 
 @pytest.mark.parametrize(
+    ("captions", "expected_annotations"),
+    [
+        (("date", ""), [("42", "#171717", "+0+0", "date")]),
+        (("", "device"), [("30", "#666666", "+0+0", "device")]),
+        (
+            ("date", "device"),
+            [
+                ("42", "#171717", "+0+0", "date"),
+                ("30", "#666666", "+0+58", "device"),
+            ],
+        ),
+    ],
+)
+def test_portrait_commands_center_trimmed_caption_layers(tmp_path, captions, expected_annotations):
+    command = build_magick_command(
+        Path("source.jpg"),
+        tmp_path / "output.jpg",
+        geometry_for(40, 80),
+        captions,
+        "Helvetica",
+        profile_path=_profile(tmp_path),
+    )
+
+    assert "xc:none" in command
+    layer_start = command.index("(", command.index("xc:none") - 4)
+    layer_end = command.index(")", command.index("xc:none"))
+    layer = command[layer_start : layer_end + 1]
+    assert layer[:8] == [
+        "(", "-size", "1200x180", "xc:none", "-font", "Helvetica",
+        "-gravity", "north",
+    ]
+    assert layer[-9:] == [
+        "-trim", "+repage", "-gravity", "center", "-background", "none",
+        "-extent", "1200x180", ")",
+    ]
+    for size, color, y_position, text in expected_annotations:
+        sequence = [
+            "-pointsize", size, "-fill", color,
+            "-annotate", y_position, text,
+        ]
+        assert any(
+            layer[index : index + len(sequence)] == sequence
+            for index in range(len(layer) - len(sequence) + 1)
+        )
+    assert command[layer_end + 1 : layer_end + 6] == [
+        "-gravity", "northwest", "-geometry", "+0+1620", "-composite",
+    ]
+
+
+@pytest.mark.parametrize(
     ("source_size", "captions"),
     [
         ((4032, 3024), ("date", "device")),
-        ((3024, 4032), ("date", "device")),
         ((956, 961), ("date", "")),
         ((956, 961), ("", "device")),
     ],
 )
-def test_non_square_or_single_line_commands_keep_direct_annotations(tmp_path, source_size, captions):
+def test_landscape_or_square_single_line_commands_keep_direct_annotations(tmp_path, source_size, captions):
     command = build_magick_command(
         Path("source.jpg"), tmp_path / "output.jpg", geometry_for(*source_size),
         captions, "Helvetica", profile_path=_profile(tmp_path),
@@ -229,6 +278,16 @@ def test_non_square_or_single_line_commands_keep_direct_annotations(tmp_path, so
 
     assert "xc:none" not in command
     assert command.count("-annotate") == sum(bool(line) for line in captions)
+
+
+def test_empty_portrait_caption_adds_no_caption_layer_or_annotation(tmp_path):
+    command = build_magick_command(
+        Path("source.jpg"), tmp_path / "output.jpg", geometry_for(40, 80),
+        ("", ""), "Helvetica", profile_path=_profile(tmp_path),
+    )
+
+    assert "xc:none" not in command
+    assert "-annotate" not in command
 
 
 @pytest.mark.parametrize(

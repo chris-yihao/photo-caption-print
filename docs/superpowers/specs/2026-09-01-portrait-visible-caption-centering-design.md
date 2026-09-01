@@ -50,6 +50,7 @@ Tests will prove:
 - empty portrait captions, landscape captions, and square single-line captions
   retain their intended paths;
 - live ImageMagick renders of portrait single-line and two-line captions have
-  equal top and bottom whitespace, expressed as
-  `2 * ink_y + ink_height == 180`;
+  top and bottom whitespace that differs by no more than one pixel, expressed
+  as `abs(2 * ink_y + ink_height - 180) <= 1`; an odd glyph height cannot be
+  divided evenly across an even-height caption area;
 - the complete Python 3.13 suite and launcher syntax checks remain clean.

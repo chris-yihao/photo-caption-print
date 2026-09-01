@@ -346,18 +346,10 @@ def build_magick_command(
         "-gravity",
         "north",
     ]
-    if _uses_square_layout(geometry) and primary and secondary:
-        caption_height = geometry.canvas_height - geometry.caption_top
-        baseline_gap = geometry.secondary_y - geometry.primary_y
-        command.extend([
-            "(", "-size", f"{geometry.canvas_width}x{caption_height}", "xc:none",
-            "-font", str(font), "-gravity", "north",
-            "-pointsize", str(primary_size), "-fill", "#171717", "-annotate", "+0+0", _safe_annotation(primary),
-            "-pointsize", str(secondary_size), "-fill", "#666666", "-annotate", f"+0+{baseline_gap}", _safe_annotation(secondary),
-            "-trim", "+repage", "-gravity", "center", "-background", "none",
-            "-extent", f"{geometry.canvas_width}x{caption_height}", ")",
-            "-gravity", "northwest", "-geometry", f"+0+{geometry.caption_top}", "-composite",
-        ])
+    if _uses_visible_caption_layer(geometry, primary, secondary):
+        command.extend(_caption_layer_arguments(
+            geometry, primary, secondary, primary_size, secondary_size, font
+        ))
     else:
         single_line_y = geometry.caption_top + (geometry.canvas_height - geometry.caption_top) // 2
         if primary:
@@ -379,6 +371,48 @@ def _uses_square_layout(geometry: PrintGeometry) -> bool:
         and geometry.canvas_height == 1200
         and geometry.source_crop is None
     )
+
+
+def _uses_visible_caption_layer(
+    geometry: PrintGeometry, primary: str, secondary: str
+) -> bool:
+    portrait = geometry.canvas_width == 1200 and geometry.canvas_height == 1800
+    square_two_line = _uses_square_layout(geometry) and bool(primary and secondary)
+    return bool(primary or secondary) and (portrait or square_two_line)
+
+
+def _caption_layer_arguments(
+    geometry: PrintGeometry,
+    primary: str,
+    secondary: str,
+    primary_size: int,
+    secondary_size: int,
+    font: str,
+) -> list[str]:
+    caption_height = geometry.canvas_height - geometry.caption_top
+    baseline_gap = geometry.secondary_y - geometry.primary_y
+    arguments = [
+        "(", "-size", f"{geometry.canvas_width}x{caption_height}", "xc:none",
+        "-font", str(font), "-gravity", "north",
+    ]
+    if primary:
+        arguments.extend([
+            "-pointsize", str(primary_size), "-fill", "#171717",
+            "-annotate", "+0+0", _safe_annotation(primary),
+        ])
+    if secondary:
+        secondary_y = baseline_gap if primary else 0
+        arguments.extend([
+            "-pointsize", str(secondary_size), "-fill", "#666666",
+            "-annotate", f"+0+{secondary_y}", _safe_annotation(secondary),
+        ])
+    arguments.extend([
+        "-trim", "+repage", "-gravity", "center", "-background", "none",
+        "-extent", f"{geometry.canvas_width}x{caption_height}", ")",
+        "-gravity", "northwest", "-geometry", f"+0+{geometry.caption_top}",
+        "-composite",
+    ])
+    return arguments
 
 
 def _safe_annotation(text: str) -> str:
