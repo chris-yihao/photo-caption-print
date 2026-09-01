@@ -150,8 +150,8 @@ def _caption_layer_arguments(
 ```
 
 In `build_magick_command`, use this helper when
-`_uses_visible_caption_layer(...)` is true; otherwise retain the current direct
-annotation fallback.
+`_uses_visible_caption_layer(geometry, primary, secondary)` is true; otherwise
+retain the current direct annotation fallback.
 
 - [ ] **Step 4: Verify command tests pass**
 
