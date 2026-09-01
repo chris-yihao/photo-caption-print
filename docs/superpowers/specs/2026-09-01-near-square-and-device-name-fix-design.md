@@ -22,7 +22,7 @@ Square-like sources use the existing square layout:
 - `1800×1200` 6×4-inch canvas at 300 PPI;
 - uncropped proportional photo fitting;
 - square margins and caption-area dimensions;
-- the existing two-line caption-group centering behavior.
+- exact visible-glyph centering for a two-line caption group.
 
 A source outside the 2% tolerance continues to use strict landscape or
 portrait classification. The 2% boundary is inclusive.
@@ -50,6 +50,28 @@ the existing metadata model, report, caption formatting, fitting, and renderer.
 square-like rule before selecting portrait or landscape geometry. Rendering
 otherwise remains unchanged.
 
+## Exact Square Caption Centering
+
+For a square-like source with both caption lines present, render the two lines
+into a transparent `1800×120` caption layer instead of annotating them directly
+onto the print canvas:
+
+1. place the primary line at relative Y `0`;
+2. place the secondary line at the existing 42-pixel relative Y offset;
+3. trim the transparent layer to the actual visible glyph bounds;
+4. extend that trimmed group back to `1800×120` with center gravity;
+5. composite the centered caption layer at the square caption area's top,
+   `Y=1080`.
+
+This centers the actual rendered pixels rather than the annotation coordinates.
+It remains correct when caption fitting reduces either font size. Horizontal
+centering and the approved line separation are preserved.
+
+This special rendering path applies only when the source is square-like and
+both caption lines are nonblank. Landscape and portrait rendering remain
+unchanged. A square-like photo with only one caption line retains the existing
+single-line behavior.
+
 ## Error Handling
 
 No new warnings or failures are introduced. Unknown models are preserved, and
@@ -63,6 +85,8 @@ Tests will cover:
 - the inclusive 2% boundary;
 - dimensions immediately beyond the boundary remaining portrait or landscape;
 - centered square caption coordinates;
+- a live ImageMagick render whose two-line square caption ink bounds have the
+  same center as the `1800×120` caption area;
 - `iPhone7,2` becoming `iPhone 6`;
 - readable and unknown device values remaining unchanged;
 - focused metadata/layout/render tests and the complete Python 3.13 suite;
