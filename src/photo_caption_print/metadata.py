@@ -17,6 +17,7 @@ DATE_KEYS = (
     "File:FileModifyDate",
 )
 MODEL_KEYS = ("EXIF:Model", "QuickTime:Model", "XMP:Model")
+DEVICE_NAMES = {"iPhone7,2": "iPhone 6"}
 LAT_KEYS = ("EXIF:GPSLatitude", "QuickTime:GPSLatitude")
 LON_KEYS = ("EXIF:GPSLongitude", "QuickTime:GPSLongitude")
 
@@ -27,6 +28,10 @@ class MetadataError(RuntimeError):
 
 def _first_value(row: Mapping[str, Any], keys: tuple[str, ...]) -> Any:
     return next((row[key] for key in keys if row.get(key) is not None), None)
+
+
+def _friendly_device_name(value: Any) -> Any:
+    return DEVICE_NAMES.get(value, value)
 
 
 def _parse_date(value: Any) -> datetime | None:
@@ -76,7 +81,7 @@ def metadata_from_exiftool(row: Mapping[str, Any]) -> PhotoMetadata:
         captured_at=captured_at,
         latitude=latitude,
         longitude=longitude,
-        device=_first_value(row, MODEL_KEYS),
+        device=_friendly_device_name(_first_value(row, MODEL_KEYS)),
     )
 
 

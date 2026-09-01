@@ -31,6 +31,23 @@ def test_metadata_from_exiftool_reads_complete_exif_values():
     assert metadata.device == "iPhone 13 Pro"
 
 
+@pytest.mark.parametrize(
+    ("raw_model", "expected"),
+    [
+        ("iPhone7,2", "iPhone 6"),
+        ("iPhone 13 Pro", "iPhone 13 Pro"),
+        ("iPhone99,9", "iPhone99,9"),
+        ("Test Camera", "Test Camera"),
+    ],
+)
+def test_metadata_normalizes_only_confirmed_device_identifiers(raw_model, expected):
+    metadata = metadata_from_exiftool(
+        {"SourceFile": "photo.jpg", "EXIF:Model": raw_model}
+    )
+
+    assert metadata.device == expected
+
+
 def test_synthetic_exif_fields_produce_complete_metadata():
     metadata = metadata_from_exiftool(
         {
