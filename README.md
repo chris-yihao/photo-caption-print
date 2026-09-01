@@ -35,7 +35,7 @@ python3.13 -m venv --copies .venv
 
 ### 元数据与人工补录
 
-程序读取可用的拍摄日期、星期、时间、GPS 地点和设备型号。元数据缺失时只隐藏相应字段；没有日期或设备也能生成干净的输出。需要补录时，传入 UTF-8 CSV（表头必须完全为 `filename,captured_at,location,device`），例如：
+程序读取可用的拍摄日期、星期、时间、GPS 地点和设备型号。已确认的 Apple 内部型号会转换为可读名称，例如 `iPhone7,2` 显示为 `iPhone 6`；未知内部型号保持原样，避免错误猜测。元数据缺失时只隐藏相应字段；没有日期或设备也能生成干净的输出。需要补录时，传入 UTF-8 CSV（表头必须完全为 `filename,captured_at,location,device`），例如：
 
 ```csv
 filename,captured_at,location,device
@@ -48,7 +48,8 @@ IMG_0001.JPG,2024-05-06T07:08:09,杭州,Phone
 
 - 6×4 英寸、300 PPI：横版 1800×1200，竖版 1200×1800
 - JPEG、sRGB、质量 94，并嵌入 sRGB ICC 配置
-- 横图以居中的轻微裁切填满 1640×960 像素照片框，左右各留 80 像素白边；竖图和正方形完整保留、不裁切，底部白边放置一行或两行信息
+- 横图以居中的轻微裁切填满 1720×1080 像素照片框，左右各留 40 像素白边，底部信息白边为 120 像素；竖图和正方形完整保留、不裁切
+- 宽高差不超过较长边 2% 的照片按正方形处理；正方形双排文字按照实际可见字形在底部白边中上下居中
 - 支持横图、竖图、正方形和 EXIF 方向；低分辨率照片仍会输出，并在报告中提示有效 PPI
 - 输出会移除 GPS 等隐私元数据；原图永不覆盖或修改
 
@@ -64,6 +65,7 @@ GPS 首次在没有现成地点且缓存没有结果时，通过 Nominatim rever
 - 地点字符串太长：程序先去掉地点的细节部分，再逐步缩小到最小字体；仍放不下时会加省略号并在 CSV 中警告。完整地点仍保留在报告的元数据字段中，也可用人工补录 CSV 指定完整文字。
 - 颜色或 ICC 报错：确认系统存在 `/System/Library/ColorSync/Profiles/sRGB Profile.icc`，且 ImageMagick 支持 profile。
 - 照片缺字段：这是允许的；用人工补录 CSV 提供日期、地点或设备。
+- 设备显示为 `iPhone7,2` 一类名称：这是 Apple 写入 EXIF 的内部型号；程序会安全转换已确认的型号（例如 `iPhone7,2` → `iPhone 6`），未知型号保持原样，也可通过人工补录 CSV 指定名称。
 - 离线地点为空：使用缓存，或稍后联网运行；可用 `--offline` 明确禁止网络。
 - 文件很多或处理很慢：先按批次处理；首次未缓存 GPS 地点会遵守 Nominatim 的 1 秒间隔。
 - 低分辨率警告：竖图和正方形仍不裁切，横图仍使用上述居中轻微裁切；报告的有效 PPI 用于判断冲印清晰度。
@@ -84,7 +86,7 @@ python3.13 -m pytest -v
 zsh -n scripts/*.command
 ```
 
-单元测试覆盖日期、地点、版式、元数据、CLI、报告和安全边界；`tests/integration/test_end_to_end.py` 在真实 ExifTool/ImageMagick 存在时生成临时合成图片，验证完整 CLI 流程、方向、横图裁切正确性、竖图/正方形边缘保留、ICC/GPS 清理、重复文件名和失败隔离。实现分为 `metadata`（提取）、`geocode`（缓存反向地理编码）、`captions`（字段格式化）、`layout`（几何与 ImageMagick 命令）和 `pipeline`（批处理、原子输出、报告）。
+单元测试覆盖日期、地点、版式、近似正方形判断、设备名称规范化、元数据、CLI、报告和安全边界；`tests/integration/test_end_to_end.py` 与渲染集成测试在真实 ExifTool/ImageMagick 存在时生成临时合成图片，验证完整 CLI 流程、方向、横图裁切正确性、竖图/正方形边缘保留、正方形可见文字居中、ICC/GPS 清理、重复文件名和失败隔离。实现分为 `metadata`（提取）、`geocode`（缓存反向地理编码）、`captions`（字段格式化）、`layout`（几何与 ImageMagick 命令）和 `pipeline`（批处理、原子输出、报告）。
 
 ## English
 
@@ -119,7 +121,7 @@ python3.13 -m venv --copies .venv
 
 ### Metadata and manual CSV
 
-The tool reads available capture date, weekday, time, GPS location, and device model. Missing fields are omitted, so files with partial or no metadata still receive a clean layout. For manual values, pass a UTF-8 CSV whose header is exactly `filename,captured_at,location,device`:
+The tool reads available capture date, weekday, time, GPS location, and device model. Confirmed Apple hardware identifiers are converted to readable names—for example, `iPhone7,2` is displayed as `iPhone 6`; unknown identifiers are preserved to avoid incorrect guesses. Missing fields are omitted, so files with partial or no metadata still receive a clean layout. For manual values, pass a UTF-8 CSV whose header is exactly `filename,captured_at,location,device`:
 
 ```csv
 filename,captured_at,location,device
@@ -132,7 +134,8 @@ Overrides match basenames only and reject path components; invalid rows appear a
 
 - 6×4 inches at 300 PPI: 1800×1200 landscape, 1200×1800 portrait
 - JPEG, sRGB, quality 94, with an embedded sRGB ICC profile
-- Landscape photos use a mild centered crop to fill a 1640×960-pixel photo frame with 80-pixel side margins; portrait and square photos remain uncropped, and the lower white border holds one or two caption lines
+- Landscape photos use a mild centered crop to fill a 1720×1080-pixel photo frame with 40-pixel side margins and a 120-pixel lower caption border; portrait and square-like photos remain uncropped
+- Photos whose dimensions differ by no more than 2% of the longer edge are treated as square-like; two-line square captions are vertically centered by their actual visible glyph bounds
 - Landscape, portrait, square, and EXIF-orientation inputs are supported; low-resolution files still render and report their effective PPI
 - Generated files remove GPS and other private metadata; originals are never overwritten or modified
 
@@ -148,6 +151,7 @@ On first use, GPS coordinates are sent to the Nominatim reverse API only when no
 - Long location strings: the tool drops location details first, then reduces the font to its documented minimum; if it still cannot fit, it adds an ellipsis and records a CSV warning. The full location remains in the report metadata fields, or you can provide the full text through the manual override CSV.
 - Color or ICC errors: verify `/System/Library/ColorSync/Profiles/sRGB Profile.icc` exists and ImageMagick supports profiles.
 - Missing photo fields: this is supported; supply date, location, or device values through the manual CSV.
+- Device shown as a name such as `iPhone7,2`: Apple may store an internal hardware identifier in EXIF. The tool safely converts confirmed identifiers (for example, `iPhone7,2` → `iPhone 6`), preserves unknown values, and also supports a name supplied through the manual CSV.
 - Offline location lookup: use cached results or retry online later; use `--offline` to explicitly forbid network access.
 - Long runs: process smaller batches; uncached GPS lookups observe the one-second Nominatim interval.
 - Low-resolution warnings: portrait and square photos remain uncropped, while landscape photos retain the centered mild crop described above; effective PPI in the report indicates expected print sharpness.
@@ -168,7 +172,7 @@ python3.13 -m pytest -v
 zsh -n scripts/*.command
 ```
 
-Unit tests cover dates, locations, layout, metadata, CLI behavior, reports, and security boundaries. `tests/integration/test_end_to_end.py` creates temporary synthetic images when real ExifTool/ImageMagick are available and verifies the complete CLI flow, orientation, correct landscape cropping, preserved portrait/square edges, ICC/GPS cleanup, duplicate names, and failure isolation. The implementation is split into `metadata` (extraction), `geocode` (cached reverse geocoding), `captions` (field formatting), `layout` (geometry and ImageMagick commands), and `pipeline` (batching, atomic output, and reports).
+Unit tests cover dates, locations, layout, near-square classification, device-name normalization, metadata, CLI behavior, reports, and security boundaries. `tests/integration/test_end_to_end.py` and render integration tests create temporary synthetic images when real ExifTool/ImageMagick are available and verify the complete CLI flow, orientation, correct landscape cropping, preserved portrait/square edges, visible square-caption centering, ICC/GPS cleanup, duplicate names, and failure isolation. The implementation is split into `metadata` (extraction), `geocode` (cached reverse geocoding), `captions` (field formatting), `layout` (geometry and ImageMagick commands), and `pipeline` (batching, atomic output, and reports).
 
 ## Author｜作者
 
