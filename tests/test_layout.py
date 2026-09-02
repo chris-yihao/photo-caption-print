@@ -285,12 +285,12 @@ def test_portrait_commands_center_trimmed_caption_layers(tmp_path, captions, exp
     layer_end = command.index(")", command.index("xc:none"))
     layer = command[layer_start : layer_end + 1]
     assert layer[:8] == [
-        "(", "-size", "1200x180", "xc:none", "-font", "Helvetica",
+        "(", "-size", "1200x200", "xc:none", "-font", "Helvetica",
         "-gravity", "north",
     ]
     assert layer[-9:] == [
         "-trim", "+repage", "-gravity", "center", "-background", "none",
-        "-extent", "1200x180", ")",
+        "-extent", "1200x200", ")",
     ]
     for size, color, y_position, text in expected_annotations:
         sequence = [
@@ -302,8 +302,21 @@ def test_portrait_commands_center_trimmed_caption_layers(tmp_path, captions, exp
             for index in range(len(layer) - len(sequence) + 1)
         )
     assert command[layer_end + 1 : layer_end + 6] == [
-        "-gravity", "northwest", "-geometry", "+0+1617", "-composite",
+        "-gravity", "northwest", "-geometry", "+0+1600", "-composite",
     ]
+
+
+def test_short_portrait_caption_layer_uses_all_whitespace_below_the_photo(tmp_path):
+    geometry = geometry_for(1000, 1200)
+    photo_bottom = geometry.photo_y + geometry.photo_height
+    command = build_magick_command(
+        Path("source.jpg"), tmp_path / "output.jpg", geometry, ("date", ""),
+        "Helvetica", profile_path=_profile(tmp_path),
+    )
+
+    assert photo_bottom == 1412
+    assert f"1200x{geometry.canvas_height - photo_bottom}" in command
+    assert f"+0+{photo_bottom}" in command
 
 
 @pytest.mark.parametrize(

@@ -394,7 +394,13 @@ def _caption_layer_arguments(
     secondary_size: int,
     font: str,
 ) -> list[str]:
-    caption_height = geometry.canvas_height - geometry.caption_top
+    portrait = geometry.canvas_width == 1200 and geometry.canvas_height == 1800
+    if portrait:
+        caption_y = geometry.photo_y + geometry.photo_height
+        caption_height = geometry.canvas_height - caption_y
+    else:
+        caption_y = geometry.caption_top - _CAPTION_SHIFT_UP
+        caption_height = geometry.canvas_height - geometry.caption_top
     baseline_gap = geometry.secondary_y - geometry.primary_y
     arguments = [
         "(", "-size", f"{geometry.canvas_width}x{caption_height}", "xc:none",
@@ -411,7 +417,6 @@ def _caption_layer_arguments(
             "-pointsize", str(secondary_size), "-fill", "#666666",
             "-annotate", f"+0+{secondary_y}", _safe_annotation(secondary),
         ])
-    caption_y = geometry.caption_top - _CAPTION_SHIFT_UP
     arguments.extend([
         "-trim", "+repage", "-gravity", "center", "-background", "none",
         "-extent", f"{geometry.canvas_width}x{caption_height}", ")",

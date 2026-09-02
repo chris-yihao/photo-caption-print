@@ -253,21 +253,23 @@ def test_square_two_line_caption_visible_ink_is_three_pixels_above_center(tmp_pa
         ("２０１７年１２月１８日 · 星期一 · 11:25", "iPhone 6"),
     ],
 )
-def test_portrait_caption_visible_ink_is_three_pixels_above_center(tmp_path, captions):
+@pytest.mark.parametrize("source_size", [(40, 80), (50, 60)])
+def test_portrait_caption_visible_ink_is_centered_in_dynamic_footer(tmp_path, captions, source_size):
     if shutil.which("magick") is None:
         pytest.skip("ImageMagick 'magick' executable is unavailable")
 
     source = tmp_path / "source.png"
     output = tmp_path / "output.png"
-    _edge_marker_fixture(source, 40, 80)
-    geometry = geometry_for(40, 80)
+    _edge_marker_fixture(source, *source_size)
+    geometry = geometry_for(*source_size)
     run_render(build_magick_command(source, output, geometry, captions, _default_font()))
 
-    caption_height = geometry.canvas_height - geometry.caption_top
+    caption_top = geometry.photo_y + geometry.photo_height
+    caption_height = geometry.canvas_height - caption_top
     ink = subprocess.run(
         [
             "magick", str(output),
-            "-crop", f"{geometry.canvas_width}x{caption_height}+0+{geometry.caption_top}",
+            "-crop", f"{geometry.canvas_width}x{caption_height}+0+{caption_top}",
             "+repage", "-colorspace", "gray", "-threshold", "90%", "-negate",
             "-trim", "-format", "%h %Y", "info:",
         ],
@@ -276,7 +278,7 @@ def test_portrait_caption_visible_ink_is_three_pixels_above_center(tmp_path, cap
         check=True,
     )
     ink_height, ink_y = (int(value) for value in ink.stdout.split())
-    assert abs(2 * ink_y + ink_height - (caption_height - 6)) <= 1
+    assert abs(2 * ink_y + ink_height - caption_height) <= 1
 
 
 def test_cli_default_font_renders_distinct_chinese_glyphs(tmp_path):
