@@ -5,9 +5,6 @@ import pytest
 
 from photo_caption_print.layout import (
     RenderError,
-    _caption_width,
-    _date_caption_runs,
-    _date_row_arguments,
     build_magick_command,
     fit_captions,
     geometry_for,
@@ -17,74 +14,35 @@ from photo_caption_print.layout import (
 )
 
 
-def test_date_caption_runs_split_only_the_standard_documentary_caption():
-    assert _date_caption_runs("２０１７年１２月１８日 · 星期一 · 11:25") == (
-        "２０１７",
-        "年",
-        "１２",
-        "月",
-        "１８",
-        "日",
-        " · 星期一 · 11:25",
-    )
-
-
-@pytest.mark.parametrize(
-    "text",
-    ["date", "２０１７年１２月１８日", "2017年12月18日 · 星期一 · 11:25", "２０１７年１２月１８日 · 星期一 · 11:2…"],
-)
-def test_date_caption_runs_leave_nonstandard_primary_text_unchanged(text):
-    assert _date_caption_runs(text) is None
-
-
-def test_date_caption_measurement_adds_five_exact_unit_gap_pixels():
+def test_date_caption_measurement_uses_one_whole_line_call():
     calls = []
 
     def measure(text, font, size):
         calls.append((text, font, size))
         return len(text) * 10
 
-    text = "２０１７年１２月１８日 · 星期一 · 11:25"
-
-    assert _caption_width(text, "STHeiti", 42, measure) == len(text) * 10 + 5
-    assert [call[0] for call in calls] == ["２０１７", "年", "１２", "月", "１８", "日", " · 星期一 · 11:25"]
-
-
-def test_date_caption_command_builds_five_gaps_on_one_shared_baseline():
-    arguments = _date_row_arguments(
-        "２０１７年１２月１８日 · 星期一 · 11:25", "STHeiti", 42, 7
+    primary = "２０１７年１２月１８日 · 星期一 · 11:25"
+    fitted = fit_captions(
+        (primary, ""), geometry_for(3024, 4032), "STHeiti", measure,
     )
 
-    assert [item for item in arguments if item.startswith("label:")] == [
-        "label:２０１７",
-        "label:年",
-        "label:１２",
-        "label:月",
-        "label:１８",
-        "label:日",
-        "label: · 星期一 · 11:25",
-    ]
-    assert sum(
-        arguments[index : index + 4] == ["(", "-size", "1x1", "xc:none"]
-        for index in range(len(arguments) - 3)
-    ) == 5
-    assert "-splice" not in arguments
-    assert "-chop" not in arguments
-    assert arguments.count("+size") == 7
-    assert arguments[-7:] == [")", "-gravity", "north", "-geometry", "+0+7", "-composite", "+geometry"]
+    assert fitted.primary == primary
+    assert calls == [(primary, "STHeiti", 42)]
 
 
 @pytest.mark.parametrize("source_size", [(4032, 3024), (3024, 4032), (956, 961)])
-def test_standard_date_caption_command_uses_segmented_row_for_every_layout(tmp_path, source_size):
+def test_standard_date_caption_command_uses_one_annotation_for_every_layout(tmp_path, source_size):
     primary = "２０１７年１２月１８日 · 星期一 · 11:25"
     command = build_magick_command(
         Path("source.jpg"), tmp_path / "output.jpg", geometry_for(*source_size),
         (primary, "iPhone 6"), "Helvetica", profile_path=_profile(tmp_path),
     )
 
-    assert "label:２０１７" in command
-    assert "label:日" in command
-    assert primary not in command
+    assert primary in command
+    assert not any(item.startswith("label:") for item in command)
+    assert "1x1" not in command
+    assert "-splice" not in command
+    assert "-chop" not in command
 
 
 def _profile(tmp_path):
@@ -280,7 +238,11 @@ def test_two_line_square_command_centers_a_trimmed_caption_layer(tmp_path):
     assert layer[:8] == [
         "(", "-size", "1800x120", "xc:none", "-font", font, "-gravity", "north",
     ]
-    assert "label:２０１７" in layer
+    primary_sequence = ["-pointsize", "28", "-fill", "#171717", "-annotate", "+0+0", primary]
+    assert any(
+        layer[index : index + len(primary_sequence)] == primary_sequence
+        for index in range(len(layer) - len(primary_sequence) + 1)
+    )
     secondary_sequence = ["-pointsize", "20", "-fill", "#666666", "-annotate", "+0+42", secondary]
     assert any(
         layer[index : index + len(secondary_sequence)] == secondary_sequence
