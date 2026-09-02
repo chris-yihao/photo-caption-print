@@ -21,7 +21,7 @@ def test_date_caption_measurement_uses_one_whole_line_call():
         calls.append((text, font, size))
         return len(text) * 10
 
-    primary = "２０１７年１２月１８日 · 星期一 · 11:25"
+    primary = "2017年12月18日 · 星期一 · 11:25"
     fitted = fit_captions(
         (primary, ""), geometry_for(3024, 4032), "STHeiti", measure,
     )
@@ -32,7 +32,7 @@ def test_date_caption_measurement_uses_one_whole_line_call():
 
 @pytest.mark.parametrize("source_size", [(4032, 3024), (3024, 4032), (956, 961)])
 def test_standard_date_caption_command_uses_one_annotation_for_every_layout(tmp_path, source_size):
-    primary = "２０１７年１２月１８日 · 星期一 · 11:25"
+    primary = "2017年12月18日 · 星期一 · 11:25"
     command = build_magick_command(
         Path("source.jpg"), tmp_path / "output.jpg", geometry_for(*source_size),
         (primary, "iPhone 6"), "Helvetica", profile_path=_profile(tmp_path),
@@ -166,7 +166,7 @@ def test_command_has_safe_source_and_print_metadata_settings(tmp_path):
         Path("-source.jpg"),
         tmp_path / "-output.jpg",
         geometry,
-        ("２０１８年０５月０１日 · 星期二 · 14:30", "上海 · 外滩 / iPhone 8"),
+        ("2018年05月01日 · 星期二 · 14:30", "上海 · 外滩 / iPhone 8"),
         "Helvetica", profile_path=_profile(tmp_path),
     )
 
@@ -206,7 +206,7 @@ def test_landscape_render_centers_and_crops_to_the_exact_photo_frame(tmp_path):
         Path("source.jpg"),
         tmp_path / "output.jpg",
         geometry_for(3264, 2448),
-        ("２０３０年０１月０７日 · 星期一 · 08:09", "重庆 · 合川区 / Test Camera"),
+        ("2030年01月07日 · 星期一 · 08:09", "重庆 · 合川区 / Test Camera"),
         "Helvetica",
         profile_path=_profile(tmp_path),
     )
@@ -220,7 +220,7 @@ def test_landscape_render_centers_and_crops_to_the_exact_photo_frame(tmp_path):
 
 def test_two_line_square_command_centers_a_trimmed_caption_layer(tmp_path):
     font = "Helvetica"
-    primary = "２０１７年１２月１８日 · 星期一 · 21:08"
+    primary = "2017年12月18日 · 星期一 · 21:08"
     secondary = "iPhone 6"
     command = build_magick_command(
         Path("source.jpg"),

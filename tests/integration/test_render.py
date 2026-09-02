@@ -226,7 +226,7 @@ def test_square_two_line_caption_visible_ink_is_three_pixels_above_center(tmp_pa
         source,
         output,
         geometry,
-        ("２０１７年１２月１８日 · 星期一 · 21:08", "iPhone 6"),
+        ("2017年12月18日 · 星期一 · 21:08", "iPhone 6"),
         _default_font(),
     ))
 
@@ -249,8 +249,8 @@ def test_square_two_line_caption_visible_ink_is_three_pixels_above_center(tmp_pa
 @pytest.mark.parametrize(
     "captions",
     [
-        ("２０１７年１２月１８日 · 星期一 · 11:25", ""),
-        ("２０１７年１２月１８日 · 星期一 · 11:25", "iPhone 6"),
+        ("2017年12月18日 · 星期一 · 11:25", ""),
+        ("2017年12月18日 · 星期一 · 11:25", "iPhone 6"),
     ],
 )
 @pytest.mark.parametrize("source_size", [(40, 80), (50, 60)])
