@@ -18,20 +18,20 @@ from photo_caption_print.layout import (
 
 
 def test_date_caption_runs_split_only_the_standard_documentary_caption():
-    assert _date_caption_runs("2017年12月18日 · 星期一 · 11:25") == (
-        ("2017", True),
-        ("年", False),
-        ("12", True),
-        ("月", False),
-        ("18", True),
-        ("日", False),
-        (" · 星期一 · 11:25", False),
+    assert _date_caption_runs("２０１７年１２月１８日 · 星期一 · 11:25") == (
+        "２０１７",
+        "年",
+        "１２",
+        "月",
+        "１８",
+        "日",
+        " · 星期一 · 11:25",
     )
 
 
 @pytest.mark.parametrize(
     "text",
-    ["date", "2017年12月18日", "2017年12月18日 · Monday · 11:25", "2017年12月18日 · 星期一 · 11:2…"],
+    ["date", "２０１７年１２月１８日", "2017年12月18日 · 星期一 · 11:25", "２０１７年１２月１８日 · 星期一 · 11:2…"],
 )
 def test_date_caption_runs_leave_nonstandard_primary_text_unchanged(text):
     assert _date_caption_runs(text) is None
@@ -44,23 +44,23 @@ def test_date_caption_measurement_adds_five_exact_unit_gap_pixels():
         calls.append((text, font, size))
         return len(text) * 10
 
-    text = "2017年12月18日 · 星期一 · 11:25"
+    text = "２０１７年１２月１８日 · 星期一 · 11:25"
 
     assert _caption_width(text, "STHeiti", 42, measure) == len(text) * 10 + 5
-    assert [call[0] for call in calls] == ["2017", "年", "12", "月", "18", "日", " · 星期一 · 11:25"]
+    assert [call[0] for call in calls] == ["２０１７", "年", "１２", "月", "１８", "日", " · 星期一 · 11:25"]
 
 
-def test_date_caption_command_builds_five_gaps_and_lowers_only_digit_runs():
+def test_date_caption_command_builds_five_gaps_on_one_shared_baseline():
     arguments = _date_row_arguments(
-        "2017年12月18日 · 星期一 · 11:25", "STHeiti", 42, 7
+        "２０１７年１２月１８日 · 星期一 · 11:25", "STHeiti", 42, 7
     )
 
     assert [item for item in arguments if item.startswith("label:")] == [
-        "label:2017",
+        "label:２０１７",
         "label:年",
-        "label:12",
+        "label:１２",
         "label:月",
-        "label:18",
+        "label:１８",
         "label:日",
         "label: · 星期一 · 11:25",
     ]
@@ -68,22 +68,21 @@ def test_date_caption_command_builds_five_gaps_and_lowers_only_digit_runs():
         arguments[index : index + 4] == ["(", "-size", "1x1", "xc:none"]
         for index in range(len(arguments) - 3)
     ) == 5
-    assert arguments.count("-splice") == 3
-    assert arguments.count("0x1") == 6
-    assert arguments.count("-chop") == 3
+    assert "-splice" not in arguments
+    assert "-chop" not in arguments
     assert arguments.count("+size") == 7
     assert arguments[-7:] == [")", "-gravity", "north", "-geometry", "+0+7", "-composite", "+geometry"]
 
 
 @pytest.mark.parametrize("source_size", [(4032, 3024), (3024, 4032), (956, 961)])
 def test_standard_date_caption_command_uses_segmented_row_for_every_layout(tmp_path, source_size):
-    primary = "2017年12月18日 · 星期一 · 11:25"
+    primary = "２０１７年１２月１８日 · 星期一 · 11:25"
     command = build_magick_command(
         Path("source.jpg"), tmp_path / "output.jpg", geometry_for(*source_size),
         (primary, "iPhone 6"), "Helvetica", profile_path=_profile(tmp_path),
     )
 
-    assert "label:2017" in command
+    assert "label:２０１７" in command
     assert "label:日" in command
     assert primary not in command
 
@@ -115,6 +114,8 @@ def test_portrait_geometry_uses_proportional_safe_inset_and_print_fonts():
     assert geometry.caption_top == 1620
     assert (geometry.photo_area_x, geometry.photo_area_y) == (20, 20)
     assert (geometry.photo_area_width, geometry.photo_area_height) == (1160, 1580)
+    assert (geometry.photo_width, geometry.photo_height) == (1160, 1547)
+    assert (geometry.photo_x, geometry.photo_y) == (20, 20)
     assert (geometry.primary_font_size, geometry.secondary_font_size) == (42, 30)
     assert (geometry.primary_min_font_size, geometry.secondary_min_font_size) == (27, 22)
     assert geometry.caption_top < geometry.primary_y < geometry.secondary_y < 1800
@@ -207,7 +208,7 @@ def test_command_has_safe_source_and_print_metadata_settings(tmp_path):
         Path("-source.jpg"),
         tmp_path / "-output.jpg",
         geometry,
-        ("2018年05月01日 · 星期二 · 14:30", "上海 · 外滩 / iPhone 8"),
+        ("２０１８年０５月０１日 · 星期二 · 14:30", "上海 · 外滩 / iPhone 8"),
         "Helvetica", profile_path=_profile(tmp_path),
     )
 
@@ -247,7 +248,7 @@ def test_landscape_render_centers_and_crops_to_the_exact_photo_frame(tmp_path):
         Path("source.jpg"),
         tmp_path / "output.jpg",
         geometry_for(3264, 2448),
-        ("2030年01月07日 · 星期一 · 08:09", "重庆 · 合川区 / Test Camera"),
+        ("２０３０年０１月０７日 · 星期一 · 08:09", "重庆 · 合川区 / Test Camera"),
         "Helvetica",
         profile_path=_profile(tmp_path),
     )
@@ -261,7 +262,7 @@ def test_landscape_render_centers_and_crops_to_the_exact_photo_frame(tmp_path):
 
 def test_two_line_square_command_centers_a_trimmed_caption_layer(tmp_path):
     font = "Helvetica"
-    primary = "2017年12月18日 · 星期一 · 21:08"
+    primary = "２０１７年１２月１８日 · 星期一 · 21:08"
     secondary = "iPhone 6"
     command = build_magick_command(
         Path("source.jpg"),
@@ -279,7 +280,7 @@ def test_two_line_square_command_centers_a_trimmed_caption_layer(tmp_path):
     assert layer[:8] == [
         "(", "-size", "1800x120", "xc:none", "-font", font, "-gravity", "north",
     ]
-    assert "label:2017" in layer
+    assert "label:２０１７" in layer
     secondary_sequence = ["-pointsize", "20", "-fill", "#666666", "-annotate", "+0+42", secondary]
     assert any(
         layer[index : index + len(secondary_sequence)] == secondary_sequence
@@ -289,7 +290,7 @@ def test_two_line_square_command_centers_a_trimmed_caption_layer(tmp_path):
         "-trim", "+repage", "-gravity", "center", "-background", "none", "-extent", "1800x120", ")",
     ]
     assert command[layer_end + 1 : layer_end + 6] == [
-        "-gravity", "northwest", "-geometry", "+0+1080", "-composite",
+        "-gravity", "northwest", "-geometry", "+0+1077", "-composite",
     ]
 
 
@@ -339,7 +340,7 @@ def test_portrait_commands_center_trimmed_caption_layers(tmp_path, captions, exp
             for index in range(len(layer) - len(sequence) + 1)
         )
     assert command[layer_end + 1 : layer_end + 6] == [
-        "-gravity", "northwest", "-geometry", "+0+1620", "-composite",
+        "-gravity", "northwest", "-geometry", "+0+1617", "-composite",
     ]
 
 
@@ -461,7 +462,18 @@ def test_single_caption_line_is_centered_in_the_reserved_caption_zone(tmp_path):
         Path("photo.jpg"), tmp_path / "output.jpg", geometry, ("", "Shanghai / iPhone"), "Helvetica", profile_path=_profile(tmp_path)
     )
 
-    assert command[command.index("-annotate") + 1] == "+0+1140"
+    assert command[command.index("-annotate") + 1] == "+0+1137"
+
+
+def test_two_direct_caption_lines_move_up_together_without_changing_their_gap(tmp_path):
+    geometry = geometry_for(4032, 3024)
+    command = build_magick_command(
+        Path("photo.jpg"), tmp_path / "output.jpg", geometry, ("date", "device"),
+        "Helvetica", profile_path=_profile(tmp_path),
+    )
+    positions = [command[index + 1] for index, value in enumerate(command) if value == "-annotate"]
+
+    assert positions == [f"+0+{geometry.primary_y - 3}", f"+0+{geometry.secondary_y - 3}"]
 
 
 def test_fit_captions_shortens_location_detail_before_reducing_font_size():

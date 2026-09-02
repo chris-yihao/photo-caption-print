@@ -24,25 +24,18 @@ _EXIF_ORIENTATIONS = {
     "5": "LeftTop", "6": "RightTop", "7": "RightBottom", "8": "LeftBottom",
 }
 _DATE_CAPTION_PATTERN = re.compile(
-    r"^(\d{4})年(\d{2})月(\d{2})日( · 星期[一二三四五六日] · \d{2}:\d{2})$"
+    r"^([０-９]{4})年([０-９]{2})月([０-９]{2})日( · 星期[一二三四五六日] · [0-9]{2}:[0-9]{2})$"
 )
+_CAPTION_SHIFT_UP = 3
 
 
-def _date_caption_runs(text: str) -> tuple[tuple[str, bool], ...] | None:
+def _date_caption_runs(text: str) -> tuple[str, ...] | None:
     """Split a formatter-produced primary line into positioned render runs."""
     match = _DATE_CAPTION_PATTERN.fullmatch(text)
     if match is None:
         return None
     year, month, day, suffix = match.groups()
-    return (
-        (year, True),
-        ("年", False),
-        (month, True),
-        ("月", False),
-        (day, True),
-        ("日", False),
-        (suffix, False),
-    )
+    return year, "年", month, "月", day, "日", suffix
 
 
 class RenderError(RuntimeError):
@@ -122,7 +115,7 @@ def geometry_for(source_width: int, source_height: int) -> PrintGeometry:
         photo_width = max(1, _round_half_up(source_width * scale))
         photo_height = max(1, _round_half_up(source_height * scale))
         photo_x = area_x + (area_width - photo_width) // 2
-        photo_y = area_y + (area_height - photo_height) // 2
+        photo_y = area_y if portrait else area_y + (area_height - photo_height) // 2
         source_crop = None
 
     if portrait:
@@ -272,7 +265,7 @@ def _caption_width(text: str, font: str, size: int, measure: MeasurementRunner) 
     runs = _date_caption_runs(text)
     if runs is None:
         return measure(text, font, size)
-    return sum(measure(run, font, size) for run, _is_digit in runs) + 5
+    return sum(measure(run, font, size) for run in runs) + 5
 
 
 def _date_row_arguments(text: str, font: str, size: int, y: int) -> list[str]:
@@ -281,17 +274,12 @@ def _date_row_arguments(text: str, font: str, size: int, y: int) -> list[str]:
     if runs is None:
         raise ValueError("text is not a standard documentary date caption")
     arguments = ["(", "-background", "none"]
-    for index, (run, is_digit) in enumerate(runs):
+    for index, run in enumerate(runs):
         arguments.extend([
             "(", "+size", "-background", "none", "-fill", "#171717",
             "-font", str(font), "-pointsize", str(size),
             f"label:{_safe_annotation(run)}",
         ])
-        if is_digit:
-            arguments.extend([
-                "-gravity", "north", "-splice", "0x1",
-                "-gravity", "south", "-chop", "0x1",
-            ])
         arguments.append(")")
         if index < 5:
             arguments.extend(["(", "-size", "1x1", "xc:none", ")"])
@@ -406,15 +394,19 @@ def build_magick_command(
             geometry, primary, secondary, primary_size, secondary_size, font
         ))
     else:
-        single_line_y = geometry.caption_top + (geometry.canvas_height - geometry.caption_top) // 2
+        single_line_y = (
+            geometry.caption_top
+            + (geometry.canvas_height - geometry.caption_top) // 2
+            - _CAPTION_SHIFT_UP
+        )
         if primary:
-            primary_y = single_line_y if not secondary else geometry.primary_y
+            primary_y = single_line_y if not secondary else geometry.primary_y - _CAPTION_SHIFT_UP
             if _date_caption_runs(primary) is not None:
                 command.extend(_date_row_arguments(primary, font, primary_size, primary_y))
             else:
                 command.extend(["-pointsize", str(primary_size), "-fill", "#171717", "-annotate", f"+0+{primary_y}", _safe_annotation(primary)])
         if secondary:
-            secondary_y = single_line_y if not primary else geometry.secondary_y
+            secondary_y = single_line_y if not primary else geometry.secondary_y - _CAPTION_SHIFT_UP
             command.extend(["-pointsize", str(secondary_size), "-fill", "#666666", "-annotate", f"+0+{secondary_y}", _safe_annotation(secondary)])
     command.extend([
         "-units", "PixelsPerInch", "-density", "300", "-colorspace", "sRGB", "-strip", "-profile", str(profile),
@@ -467,9 +459,7 @@ def _caption_layer_arguments(
             "-pointsize", str(secondary_size), "-fill", "#666666",
             "-annotate", f"+0+{secondary_y}", _safe_annotation(secondary),
         ])
-    caption_y = geometry.caption_top
-    if primary and not secondary and _date_caption_runs(primary) is not None:
-        caption_y += 1
+    caption_y = geometry.caption_top - _CAPTION_SHIFT_UP
     arguments.extend([
         "-trim", "+repage", "-gravity", "center", "-background", "none",
         "-extent", f"{geometry.canvas_width}x{caption_height}", ")",

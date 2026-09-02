@@ -214,7 +214,7 @@ def test_literal_percent_property_caption_draws_visible_text_instead_of_expandin
     assert float(ink.stdout) < 0.999
 
 
-def test_square_two_line_caption_visible_ink_is_vertically_centered(tmp_path):
+def test_square_two_line_caption_visible_ink_is_three_pixels_above_center(tmp_path):
     if shutil.which("magick") is None:
         pytest.skip("ImageMagick 'magick' executable is unavailable")
 
@@ -226,7 +226,7 @@ def test_square_two_line_caption_visible_ink_is_vertically_centered(tmp_path):
         source,
         output,
         geometry,
-        ("2017年12月18日 · 星期一 · 21:08", "iPhone 6"),
+        ("２０１７年１２月１８日 · 星期一 · 21:08", "iPhone 6"),
         _default_font(),
     ))
 
@@ -243,17 +243,17 @@ def test_square_two_line_caption_visible_ink_is_vertically_centered(tmp_path):
         check=True,
     )
     ink_height, ink_y = (int(value) for value in ink.stdout.split())
-    assert abs(2 * ink_y + ink_height - caption_height) <= 1
+    assert abs(2 * ink_y + ink_height - (caption_height - 6)) <= 1
 
 
 @pytest.mark.parametrize(
     "captions",
     [
-        ("2017年12月18日 · 星期一 · 11:25", ""),
-        ("2017年12月18日 · 星期一 · 11:25", "iPhone 6"),
+        ("２０１７年１２月１８日 · 星期一 · 11:25", ""),
+        ("２０１７年１２月１８日 · 星期一 · 11:25", "iPhone 6"),
     ],
 )
-def test_portrait_caption_visible_ink_is_vertically_centered(tmp_path, captions):
+def test_portrait_caption_visible_ink_is_three_pixels_above_center(tmp_path, captions):
     if shutil.which("magick") is None:
         pytest.skip("ImageMagick 'magick' executable is unavailable")
 
@@ -276,7 +276,7 @@ def test_portrait_caption_visible_ink_is_vertically_centered(tmp_path, captions)
         check=True,
     )
     ink_height, ink_y = (int(value) for value in ink.stdout.split())
-    assert abs(2 * ink_y + ink_height - caption_height) <= 1
+    assert abs(2 * ink_y + ink_height - (caption_height - 6)) <= 1
 
 
 def test_cli_default_font_renders_distinct_chinese_glyphs(tmp_path):
