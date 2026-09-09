@@ -6,7 +6,7 @@
 
 ### 当前状态
 
-Photo Caption Print 是一个可在 macOS 本地运行的文件夹批处理工具，当前版本已完成核心流程、命令行入口、CSV 报告和双击启动脚本。它把 Apple“照片”导出的照片制作成适合冲印的 6×4 英寸 JPEG，并在白色边框中加入可用的拍摄信息。
+Photo Caption Print 是一个可在 macOS 本地运行的文件夹批处理工具，当前版本已完成核心流程、命令行入口、CSV 报告和根目录一键启动脚本。它把 Apple“照片”导出的照片制作成适合冲印的 6×4 英寸 JPEG，并在白色边框中加入可用的拍摄信息。
 
 ### 要求
 
@@ -23,7 +23,9 @@ Photo Caption Print 是一个可在 macOS 本地运行的文件夹批处理工�
 2. （可选）打开 XnView MP 的 `待筛选照片` 文件夹，切换到缩略图视图；为保留照片加星级、颜色标签或 Rating，按保留评级过滤。
 3. 清理并准备 `已选照片` 输入文件夹后，只把筛选出的照片复制/移动进去；不要把未筛选的导出文件留在 `已选照片`，也不要在 XnView MP 中删除 `待筛选照片` 内的原始导出文件。
 4. 首次使用双击 `scripts/Install.command` 安装依赖和本地虚拟环境。
-5. 双击 `scripts/Photo Caption Print.command`；完成后从 `打印成品` 取 JPEG，并查看 `reports/处理报告.csv`。
+5. 回到项目根目录，双击 `开始转换.command`；完成后从 `打印成品` 取 JPEG，并查看 `reports/处理报告.csv`。
+
+`scripts/Photo Caption Print.command` 是相同功能的内部启动脚本，日常使用时无需进入 `scripts` 文件夹。
 
 安装脚本只在项目目录创建 `.venv`，不会修改 shell 配置文件。也可以手动安装：
 
@@ -92,7 +94,7 @@ zsh -n scripts/*.command
 
 ### Status
 
-Photo Caption Print is a local, folder-based macOS batch tool. The current version includes the core pipeline, CLI, CSV report, and double-click launcher. It turns photos exported from Apple Photos into 6×4-inch print-ready JPEGs with available capture information in a white border.
+Photo Caption Print is a local, folder-based macOS batch tool. The current version includes the core pipeline, CLI, CSV report, and a one-click launcher in the project root. It turns photos exported from Apple Photos into 6×4-inch print-ready JPEGs with available capture information in a white border.
 
 ### Requirements
 
@@ -109,7 +111,9 @@ Photo Caption Print is a local, folder-based macOS batch tool. The current versi
 2. Optionally open XnView MP, open the `待筛选照片` folder, and switch to thumbnails. Assign stars, color labels, or a Rating, then filter by the rating you want to retain.
 3. Clear and prepare the `已选照片` input folder, then copy or move only the filtered selections into it. Never leave unfiltered exports in `已选照片`, and do not delete the original exports from `待筛选照片` in XnView MP.
 4. On first use, double-click `scripts/Install.command` to install dependencies and the local virtual environment.
-5. Double-click `scripts/Photo Caption Print.command`; collect JPEGs from `打印成品` and review `reports/处理报告.csv`.
+5. Return to the project root and double-click `开始转换.command`; collect JPEGs from `打印成品` and review `reports/处理报告.csv`.
+
+`scripts/Photo Caption Print.command` remains the internal launcher for the same workflow; normal use no longer requires opening the `scripts` folder.
 
 The installer creates `.venv` only inside the project and does not edit shell profiles. Manual installation is also supported:
 

@@ -228,19 +228,41 @@ def _copy_script(tmp_path: Path, name: str) -> Path:
     shutil.copy2(PROJECT_ROOT / "scripts" / name, script)
     if name == "Install.command":
         shutil.copy2(PROJECT_ROOT / "scripts" / "Photo Caption Print.command", script.parent / "Photo Caption Print.command")
+        shutil.copy2(PROJECT_ROOT / "开始转换.command", script.parents[1] / "开始转换.command")
     return script
 
 
+def test_root_launcher_forwards_output_errors_and_exit_status(tmp_path):
+    root = tmp_path / "项目 空间"
+    scripts = root / "scripts"
+    scripts.mkdir(parents=True)
+    launcher = root / "开始转换.command"
+    shutil.copy2(PROJECT_ROOT / "开始转换.command", launcher)
+    internal = scripts / "Photo Caption Print.command"
+    internal.write_text(
+        "#!/bin/zsh\nprint '内部标准输出'\nprint -u2 '内部错误输出'\nexit 7\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(["zsh", str(launcher)], cwd="/", text=True, capture_output=True)
+
+    assert result.returncode == 7
+    assert result.stdout == "内部标准输出\n"
+    assert result.stderr == "内部错误输出\n"
+
+
 def test_shell_scripts_have_strict_mode_and_safe_explicit_commands():
+    root_launcher = (PROJECT_ROOT / "开始转换.command").read_text(encoding="utf-8")
     launcher = (PROJECT_ROOT / "scripts" / "Photo Caption Print.command").read_text(encoding="utf-8")
     installer = (PROJECT_ROOT / "scripts" / "Install.command").read_text(encoding="utf-8")
 
-    for script in (launcher, installer):
+    for script in (root_launcher, launcher, installer):
         assert "set -euo pipefail" in script
         assert "sudo" not in script
         assert "curl" not in script
         assert ".zshrc" not in script
         assert ".zprofile" not in script
+    assert 'exec /bin/zsh "$PROJECT_ROOT/scripts/Photo Caption Print.command"' in root_launcher
     assert '"$PYTHON" -m photo_caption_print.cli' in launcher
     assert '"$BREW" install python@3.13 exiftool imagemagick' in installer
     assert '"$PYTHON" -m venv --copies "$VENV"' in installer
@@ -297,6 +319,7 @@ def test_launcher_resolves_its_own_root_and_quotes_paths(tmp_path):
 def test_installer_uses_brew_without_touching_shell_profiles(tmp_path):
     script = _copy_script(tmp_path, "Install.command")
     root = script.parents[1]
+    (root / "开始转换.command").chmod(0o644)
     bin_dir = tmp_path / "fake-bin"; bin_dir.mkdir()
     brew_log = tmp_path / "brew.log"
     prefix = tmp_path / "brew-prefix" / "python@3.13"
@@ -330,6 +353,7 @@ def test_installer_uses_brew_without_touching_shell_profiles(tmp_path):
     assert (root / ".venv" / "bin" / "python").is_file()
     assert stat.S_IXUSR & (root / "scripts" / "Install.command").stat().st_mode
     assert stat.S_IXUSR & (root / "scripts" / "Photo Caption Print.command").stat().st_mode
+    assert stat.S_IXUSR & (root / "开始转换.command").stat().st_mode
     launcher = subprocess.run(["zsh", str(root / "scripts" / "Photo Caption Print.command")], env={**os.environ, "PATH": f"{bin_dir}:/bin:/usr/bin"}, text=True, capture_output=True)
     assert launcher.returncode == 0, launcher.stderr
 

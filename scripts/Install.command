@@ -139,5 +139,5 @@ else
   exit 2
 fi
 
-chmod +x "$SCRIPT_DIR/Photo Caption Print.command" "$SCRIPT_DIR/Install.command"
-print "\n安装完成。将照片放进“已选照片”后，双击 scripts/Photo Caption Print.command。"
+chmod +x "$PROJECT_ROOT/开始转换.command" "$SCRIPT_DIR/Photo Caption Print.command" "$SCRIPT_DIR/Install.command"
+print "\n安装完成。将照片放进“已选照片”后，双击项目根目录的“开始转换.command”。"
