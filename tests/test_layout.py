@@ -1,7 +1,9 @@
 from pathlib import Path
 from types import SimpleNamespace
+import json
 
 import pytest
+import photo_caption_print.layout as layout_module
 
 from photo_caption_print.layout import (
     RenderError,
@@ -383,6 +385,43 @@ def test_probe_oriented_dimensions_reads_and_auto_orients_only_the_primary_frame
     command, kwargs = calls[0]
     assert command == ["magick", "(", "-read", "-photo.heic[0]", "-auto-orient", ")", "-format", "%w %h", "info:"]
     assert kwargs == {"check": False, "capture_output": True, "text": True}
+
+
+@pytest.mark.parametrize(
+    ("orientation", "rotation", "expected_orient"),
+    [(6, 3, None), (3, 2, None), (6, None, "RightTop")],
+)
+def test_heic_probe_and_render_apply_exif_only_without_native_rotation(
+    tmp_path, monkeypatch, orientation, rotation, expected_orient
+):
+    source = tmp_path / "iphone.heic"
+    source.write_bytes(b"fixture")
+    metadata = {"SourceFile": str(source), "Orientation": orientation}
+    if rotation is not None:
+        metadata["Rotation"] = rotation
+    monkeypatch.setattr(
+        layout_module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=0, stdout=json.dumps([metadata]), stderr=""),
+    )
+    commands = []
+
+    def probe_runner(command, **_kwargs):
+        commands.append(command)
+        return SimpleNamespace(returncode=0, stdout="3024 4032" if orientation == "6" else "4032 3024", stderr="")
+
+    dimensions = probe_oriented_dimensions(source, probe_runner)
+    render_command = build_magick_command(
+        source, tmp_path / "output.jpg", geometry_for(*dimensions), ("", ""),
+        "Helvetica", profile_path=_profile(tmp_path),
+    )
+
+    for command in (commands[0], render_command):
+        if expected_orient is None:
+            assert "-orient" not in command
+        else:
+            assert command[command.index("-orient") + 1] == expected_orient
+    assert commands[0].count("-auto-orient") == render_command.count("-auto-orient") == 1
 
 
 def test_probe_oriented_dimensions_raises_typed_error_for_bad_tool_output():

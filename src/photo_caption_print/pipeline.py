@@ -80,10 +80,12 @@ class BatchPipeline:
                  caption_fitter: Callable[[Sequence[str], Any], Any] = _default_caption_fitter,
                  renderer: Callable[[Path, Path, Any, Any], None] = _default_renderer,
                  replace: Callable[..., None] = os.replace,
-                 boundary_hook: Callable[[str, Path], None] | None = None) -> None:
+                 boundary_hook: Callable[[str, Path], None] | None = None,
+                 progress: Callable[[int, int], None] | None = None) -> None:
         self.metadata_reader, self.geocoder, self.dimension_probe = metadata_reader, geocoder, dimension_probe
         self.caption_formatter, self.caption_fitter, self.renderer, self.replace = caption_formatter, caption_fitter, renderer, replace
         self.boundary_hook = boundary_hook
+        self.progress = progress
 
     def process_folder(self, input_dir: str | Path, output_dir: str | Path, report_path: str | Path,
                        overrides_path: str | Path | None = None) -> BatchSummary:
@@ -99,6 +101,8 @@ class BatchPipeline:
             _validate_pinned_relationships(source_pin, target_pin, report_pin, report.name)
             if not all(_visible_directory_matches(pin) for pin in (source_pin, target_pin, report_pin)):
                 raise ValueError("validated directory changed before batch processing")
+            if self.progress is not None:
+                self.progress(0, len(sources))
             overrides, override_warnings = self._load_overrides(overrides_path)
             metadata, metadata_warnings = self._read_metadata(sources)
             entries, manifest_warning = _load_manifest(target_pin)
@@ -116,6 +120,8 @@ class BatchPipeline:
                 reserved.add(preferred)
                 if result.output is not None: reserved.add(result.output)
                 details.append({"result": result, "metadata": item_metadata, "ppi": ppi})
+                if self.progress is not None:
+                    self.progress(len(details), len(sources))
             output_race_warning = ""
             if self.boundary_hook is not None:
                 self.boundary_hook("before-manifest", target_pin.path)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from io import StringIO
 from pathlib import Path
 import os
 import shutil
@@ -81,7 +82,68 @@ def test_main_uses_base_relative_defaults_and_prints_chinese_summary(tmp_path, c
     assert "警告 0" in output
     assert "跳过 0" in output
     assert "失败 0" in output
+    assert "\r" not in output
     assert str((base / "reports" / "处理报告.csv").resolve()) in output
+
+
+def test_tty_progress_redraws_one_line_and_ends_before_summary(tmp_path, monkeypatch):
+    from photo_caption_print.cli import main
+
+    class TTYBuffer(StringIO):
+        def isatty(self):
+            return True
+
+    class ProgressingPipeline:
+        def __init__(self, progress):
+            self.progress = progress
+
+        def process_folder(self, *_args):
+            for done in range(4):
+                self.progress(done, 3)
+            return BatchSummary((
+                ProcessResult(Path("a.jpg"), Path("a-print.jpg"), "success"),
+                ProcessResult(Path("b.jpg"), None, "failed", error="bad image"),
+                ProcessResult(Path("c.jpg"), None, "skipped"),
+            ))
+
+    (tmp_path / "已选照片").mkdir()
+    output = TTYBuffer()
+    monkeypatch.setattr(sys, "stdout", output)
+    injected = services(FakePipeline(successful_summary(), []))
+    injected["pipeline_factory"] = lambda **kwargs: ProgressingPipeline(kwargs["progress"])
+
+    assert main(["--base-dir", str(tmp_path)], injected) == 1
+
+    shown = output.getvalue()
+    assert shown.count("\r") == 4
+    assert "(0/3)" in shown and "(1/3)" in shown and "(2/3)" in shown and "(3/3)" in shown
+    assert shown.index("(3/3)") < shown.index("\n成功 1")
+    assert "跳过 1" in shown and "失败 1" in shown
+
+
+def test_tty_progress_finishes_line_when_batch_raises(tmp_path, monkeypatch):
+    from photo_caption_print.cli import main
+
+    class TTYBuffer(StringIO):
+        def isatty(self):
+            return True
+
+    class FailingPipeline:
+        def __init__(self, progress):
+            self.progress = progress
+
+        def process_folder(self, *_args):
+            self.progress(0, 2)
+            raise ReportError("report unavailable")
+
+    (tmp_path / "已选照片").mkdir()
+    output = TTYBuffer()
+    monkeypatch.setattr(sys, "stdout", output)
+    injected = services(FakePipeline(successful_summary(), []))
+    injected["pipeline_factory"] = lambda **kwargs: FailingPipeline(kwargs["progress"])
+
+    assert main(["--base-dir", str(tmp_path)], injected) == 2
+    assert output.getvalue().endswith("(0/2)\n")
 
 
 def test_main_passes_explicit_paths_offline_and_nominatim_endpoint(tmp_path):

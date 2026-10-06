@@ -7,7 +7,7 @@ import shutil
 import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 from urllib.parse import urlsplit
 
 from photo_caption_print.captions import format_caption
@@ -129,7 +129,12 @@ def _default_services() -> dict[str, Any]:
     }
 
 
-def _make_pipeline(args: argparse.Namespace, cache: Path, services: Mapping[str, Any]) -> BatchPipeline:
+def _make_pipeline(
+    args: argparse.Namespace,
+    cache: Path,
+    services: Mapping[str, Any],
+    progress: Callable[[int, int], None] | None = None,
+) -> BatchPipeline:
     geocoder = services["geocoder_factory"](cache, endpoint=args.nominatim_url, offline=args.offline)
     font, profile = args.font, _absolute(args.srgb_profile)
 
@@ -147,7 +152,29 @@ def _make_pipeline(args: argparse.Namespace, cache: Path, services: Mapping[str,
         caption_formatter=services["caption_formatter"],
         caption_fitter=fitter,
         renderer=renderer,
+        progress=progress,
     )
+
+
+class _TerminalProgress:
+    """Redraw the current batch count on one interactive terminal line."""
+
+    def __init__(self, stream: TextIO) -> None:
+        self.stream = stream
+        self.active = False
+
+    def __call__(self, done: int, total: int) -> None:
+        filled = 20 * done // total if total else 0
+        bar = "█" * filled + "░" * (20 - filled)
+        self.stream.write(f"\r转换进度 [{bar}] ({done}/{total})")
+        self.stream.flush()
+        self.active = True
+
+    def finish(self) -> None:
+        if self.active:
+            self.stream.write("\n")
+            self.stream.flush()
+            self.active = False
 
 
 def _print_summary(summary: BatchSummary, report: Path) -> None:
@@ -172,7 +199,14 @@ def main(argv: list[str] | None = None, services: Mapping[str, Any] | None = Non
             return 2
         input_dir, output_dir, report, overrides, cache = paths
         safe_overrides = overrides if overrides.exists() else None
-        summary = _make_pipeline(args, cache, active_services).process_folder(input_dir, output_dir, report, safe_overrides)
+        progress = _TerminalProgress(sys.stdout) if sys.stdout.isatty() else None
+        try:
+            summary = _make_pipeline(args, cache, active_services, progress).process_folder(
+                input_dir, output_dir, report, safe_overrides
+            )
+        finally:
+            if progress is not None:
+                progress.finish()
         _print_summary(summary, report)
         return 1 if summary.failed_count else 0
     except KeyboardInterrupt:

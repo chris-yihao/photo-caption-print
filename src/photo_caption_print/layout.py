@@ -10,6 +10,7 @@ is intentionally informative, not a resize limit.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import math
 from pathlib import Path
 import subprocess
@@ -438,18 +439,22 @@ def _primary_frame_source(source: Path | str) -> str:
 
 
 def _exif_orientation_argument(source: Path | str) -> list[str]:
-    """Provide ImageMagick an EXIF orientation when a codec omits it on read."""
+    """Apply EXIF only when HEIC native rotation has not already been decoded."""
     try:
         result = subprocess.run(
-            ["exiftool", "-n", "-s3", "-EXIF:Orientation", "--", str(source)],
-            check=False,
-            capture_output=True,
-            text=True,
+            ["exiftool", "-j", "-n", "-QuickTime:Rotation", "-EXIF:Orientation", "--", str(source)],
+            check=False, capture_output=True, text=True,
         )
-    except OSError:
+        if result.returncode != 0:
+            return []
+        rows = json.loads(result.stdout)
+        metadata = rows[0] if isinstance(rows, list) and rows and isinstance(rows[0], dict) else {}
+    except (OSError, ValueError, TypeError):
         return []
-    orientation = _EXIF_ORIENTATIONS.get(str(getattr(result, "stdout", "")).strip())
-    return ["-orient", orientation] if getattr(result, "returncode", 1) == 0 and orientation else []
+    if Path(source).suffix.casefold() == ".heic" and metadata.get("Rotation") in (1, 2, 3):
+        return []
+    orientation = _EXIF_ORIENTATIONS.get(str(metadata.get("Orientation", "")))
+    return ["-orient", orientation] if orientation else []
 
 
 def _resize_spec(geometry: PrintGeometry) -> str:

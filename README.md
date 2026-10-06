@@ -23,7 +23,7 @@ Photo Caption Print 是一个可在 macOS 本地运行的文件夹批处理工�
 2. （可选）打开 XnView MP 的 `待筛选照片` 文件夹，切换到缩略图视图；为保留照片加星级、颜色标签或 Rating，按保留评级过滤。
 3. 清理并准备 `已选照片` 输入文件夹后，只把筛选出的照片复制/移动进去；不要把未筛选的导出文件留在 `已选照片`，也不要在 XnView MP 中删除 `待筛选照片` 内的原始导出文件。
 4. 首次使用双击 `scripts/Install.command` 安装依赖和本地虚拟环境。
-5. 回到项目根目录，双击 `开始转换.command`；完成后从 `打印成品` 取 JPEG，并查看 `reports/处理报告.csv`。
+5. 回到项目根目录，双击 `开始转换.command`；终端会在同一行显示已处理张数（如 `255/1000`）。完成后从 `打印成品` 取 JPEG，并查看 `reports/处理报告.csv`。
 
 `scripts/Photo Caption Print.command` 是相同功能的内部启动脚本，日常使用时无需进入 `scripts` 文件夹。
 
@@ -111,7 +111,7 @@ Photo Caption Print is a local, folder-based macOS batch tool. The current versi
 2. Optionally open XnView MP, open the `待筛选照片` folder, and switch to thumbnails. Assign stars, color labels, or a Rating, then filter by the rating you want to retain.
 3. Clear and prepare the `已选照片` input folder, then copy or move only the filtered selections into it. Never leave unfiltered exports in `已选照片`, and do not delete the original exports from `待筛选照片` in XnView MP.
 4. On first use, double-click `scripts/Install.command` to install dependencies and the local virtual environment.
-5. Return to the project root and double-click `开始转换.command`; collect JPEGs from `打印成品` and review `reports/处理报告.csv`.
+5. Return to the project root and double-click `开始转换.command`; the terminal updates the processed count on one line (for example, `255/1000`). Collect JPEGs from `打印成品` and review `reports/处理报告.csv`.
 
 `scripts/Photo Caption Print.command` remains the internal launcher for the same workflow; normal use no longer requires opening the `scripts` folder.
 

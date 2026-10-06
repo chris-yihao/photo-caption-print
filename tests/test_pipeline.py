@@ -110,6 +110,34 @@ def test_discovery_is_non_recursive_sorted_case_insensitively_and_safe(tmp_path)
     assert (source / "note.txt").read_bytes() == b"source"
 
 
+def test_progress_counts_discovered_photos_and_failed_attempts(tmp_path):
+    source, output, report = tmp_path / "in", tmp_path / "out", tmp_path / "report.csv"
+    source.mkdir()
+    make_photo(source, "a.jpg")
+    make_photo(source, "b.jpg")
+    make_photo(source, "ignored.txt")
+    updates = []
+
+    summary = pipeline(
+        FakeMetadataReader(rows_for("a.jpg", "b.jpg")),
+        renderer=FakeRenderer(failing={"b.jpg"}),
+        progress=lambda done, total: updates.append((done, total)),
+    ).process_folder(source, output, report)
+
+    assert [result.status for result in summary.results] == ["success", "failed"]
+    assert updates == [(0, 2), (1, 2), (2, 2)]
+
+
+def test_progress_reports_zero_for_empty_folder(tmp_path):
+    source = tmp_path / "in"
+    source.mkdir()
+    updates = []
+
+    pipeline(progress=lambda done, total: updates.append((done, total))).process_folder(source, tmp_path / "out", tmp_path / "report.csv")
+
+    assert updates == [(0, 0)]
+
+
 def test_metadata_is_read_once_and_mapped_by_resolved_path_or_unique_basename(tmp_path):
     source, output, report = tmp_path / "in", tmp_path / "out", tmp_path / "report.csv"
     source.mkdir()

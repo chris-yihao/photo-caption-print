@@ -141,7 +141,16 @@ def test_cli_pipeline_handles_synthetic_folder_without_mutating_inputs(tmp_path:
         assert _identity(input_dir / name) == identity
 
 
-def test_cli_pipeline_renders_portrait_heic_when_heic_delegate_is_available(tmp_path: Path, render_tools):
+@pytest.mark.parametrize(
+    ("orientation", "expected_size", "expected_edges"),
+    [
+        ("6", (100, 160), ("yellow", "blue", "cyan", "green")),
+        ("3", (160, 100), ("green", "yellow", "blue", "cyan")),
+    ],
+)
+def test_cli_pipeline_renders_heic_exif_orientation_without_native_rotation(
+    tmp_path: Path, render_tools, orientation, expected_size, expected_edges
+):
     format_result = subprocess.run([MAGICK, "-list", "format"], check=True, capture_output=True, text=True)
     if not re.search(r"(?im)^\s*HEIC\b", format_result.stdout):
         pytest.skip("HEIC-specific case skipped: ImageMagick has no HEIC delegate")
@@ -159,7 +168,7 @@ def test_cli_pipeline_renders_portrait_heic_when_heic_delegate_is_available(tmp_
         if "delegate" in detail.lower() or "heic" in detail.lower():
             pytest.skip(f"HEIC-specific case skipped: encoder delegate unavailable ({detail})")
         raise
-    _set_tags(heic, orientation="6")
+    _set_tags(heic, orientation=orientation)
     before = _identity(heic)
 
     class FakeGeocoder:
@@ -177,7 +186,7 @@ def test_cli_pipeline_renders_portrait_heic_when_heic_delegate_is_available(tmp_
     rows = _read_report(report_path)
     assert len(rows) == 1 and rows[0]["status"] in {"success", "warning"}
     output = output_dir / "portrait-print.jpg"
-    _assert_output(output, (100, 160), ("yellow", "blue", "cyan", "green"))
+    _assert_output(output, expected_size, expected_edges)
     assert _identity(heic) == before
 
 
